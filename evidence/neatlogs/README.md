@@ -15,6 +15,9 @@ span, with one LLM span per model turn and one TOOL span per MCP tool call. Trac
 | `07-v2-notes-run-output.png` | Its output: REGRESSION_DETECTED with a results table, the fix, and a push-back on the gate ("You approved the release … I'd hold the release until the fix below is in."). |
 | `08-v2-auth-run-output.png` | v2 run on the auth scenario, started from the control panel (5:17 PM, recorded for the demo video): output with results table and fix. |
 | `09-v2-auth-run-steps.png` | Its steps: 46 steps, 94 s. |
+| `10-v2-auth-benchmark-steps.png` | v2 benchmark run on auth (started 3:18 PM, run `2026-10-10T09-48-33-134Z_auth-logout_v2-evidence-first`): **45 steps, 77 s**. |
+| `11-v2-auth-benchmark-gate-denied.png` | The same run's last steps: `request_release_approval` shows ERROR, which is the auto-deny gate. That is the "Execution Failed" explained above. |
+| `12-v2-auth-benchmark-output.png` | Its output: "the human reviewer denied it (automatic deny for this benchmark run), so I've stopped", plus the results table and fix. |
 
 **About "Execution Failed" on the 03:15–03:21 PM traces.** These are the unattended benchmark
 runs, started with `--gate auto-deny`. A denied release gate comes back to the SDK as a tool
