@@ -45,7 +45,7 @@ def slide_segment(name, slide, narration, tail=1.0):
         "-filter_complex",
         f"[0:v]format=yuv420p,fade=t=in:st=0:d=0.35,fade=t=out:st={seg_len - 0.35:.3f}:d=0.35[v];" + audio_filter(seg_len),
         "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-        "-c:a", "aac", "-b:a", "192k", "-r", str(FPS), str(out),
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-r", str(FPS), str(out),
     ])
     return out
 
@@ -92,7 +92,7 @@ def live_segment(name, start, end, speed, label, narration, emu_offset, show_emu
     )
     run([*inputs, "-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]",
          "-t", f"{seg_len:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-         "-c:a", "aac", "-b:a", "192k", "-r", str(FPS), str(out)])
+         "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-r", str(FPS), str(out)])
     return out
 
 
@@ -108,7 +108,7 @@ def main():
         live_segment("04_liveA", tl["panel_loaded"], tl["first_tool_call"], 1.0, "liveA", n / "live1.wav", emu_offset, show_emulator=False),
         live_segment("05_liveB", tl["first_tool_call"], tl["approval_shown"] - 1.5, 4.0, "liveB", n / "live2.wav", emu_offset),
         live_segment("06_liveC", tl["approval_shown"] - 1.5, tl["run_done"] + 1.5, 1.0, "liveC", n / "live3.wav", emu_offset),
-        live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.0, "liveD", None, emu_offset, show_emulator=False),
+        live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.0, "liveD", n / "live4.wav", emu_offset, show_emulator=False),
         slide_segment("08_neatlogs", s / "s4.png", n / "s4.wav"),
         slide_segment("09_recovery", s / "s5.png", n / "s5.wav"),
         slide_segment("10_entire", s / "s6.png", n / "s6.wav"),
