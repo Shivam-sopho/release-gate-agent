@@ -123,7 +123,7 @@ function screenState() {
 
 // toolset "v1" reproduces the original tools exactly (baseline runs); "v2" is the
 // version improved after reading the v1 neatlogs traces (see hackathon.md).
-function buildServer(toolset) {
+function buildServer(toolset, sourceDir) {
   const v2 = toolset !== "v1";
   const server = new McpServer({ name: "release-gate-tools", version: "1.0.0" });
 
@@ -387,6 +387,27 @@ function buildServer(toolset) {
     })
   );
 
+  // Optional: when the agent is given the app's source, entire-graph turns "which
+  // class changed" (from diff_apks) into "which screens depend on it".
+  if (sourceDir) {
+    server.registerTool(
+      "source_impact",
+      {
+        description:
+          "Source is available for this app. Given a class that diff_apks shows changed (simple name, e.g. AuthManager), return its blast radius from the entire-graph code graph: direct and transitive callers (e.g. the Activities that construct or call it), callees and siblings. Use it to choose which screens and journeys to test.",
+        inputSchema: { class_name: z.string() },
+      },
+      tool("source_impact", async ({ class_name }) => {
+        const out = execFileSync(
+          "entire",
+          ["graph", "impact", "--repo", sourceDir, "--symbol", class_name, "--depth", "2", "--format", "text", "--exclude-tests"],
+          { encoding: "utf8", cwd: sourceDir, maxBuffer: 1024 * 1024 * 10 }
+        );
+        return text(out.replace(/^Index: .*\n/, ""));
+      })
+    );
+  }
+
   server.registerTool(
     "write_report",
     {
@@ -425,7 +446,7 @@ app.use(express.json());
 app.post("/mcp", async (req, res) => {
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => transport.close());
-  const server = buildServer(req.get("x-toolset") || "v2");
+  const server = buildServer(req.get("x-toolset") || "v2", req.get("x-source-dir") || null);
   await server.connect(transport);
   const evidenceDir = req.get("x-evidence-dir") || null;
   await requestContext.run({ evidenceDir }, () => transport.handleRequest(req, res, req.body));

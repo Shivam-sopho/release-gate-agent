@@ -27,6 +27,8 @@ const { values: args } = parseArgs({
     old: { type: "string" },
     new: { type: "string" },
     package: { type: "string" },
+    // optional app source checkout: enables the entire-graph source_impact tool
+    source: { type: "string" },
     prompt: { type: "string", default: process.env.AGENT_PROMPT || "v1-baseline" },
     model: { type: "string", default: process.env.AGENT_MODEL },
     "max-turns": { type: "string", default: "120" },
@@ -62,6 +64,9 @@ const userMessage =
   (args.package
     ? `Both builds are package ${args.package}.\n`
     : `Both builds are the same app; read the package id from the diff/manifest.\n`) +
+  (args.source
+    ? `The app's source is available: after diff_apks, call source_impact on each changed app class to see which screens depend on it, and use that to choose journeys.\n`
+    : "") +
   `Finish with request_release_approval.`;
 
 // ---------------------------------------------------------------------------
@@ -148,6 +153,7 @@ const summary = {
   scenario,
   prompt_version: args.prompt,
   toolset,
+  source_dir: args.source || null,
   git_commit: gitCommit(),
   fault_inject: process.env.FAULT_INJECT_NOTE || null,
   model: args.model || "(default)",
@@ -180,7 +186,17 @@ async function main() {
       maxTurns: Number(args["max-turns"]),
       tools: [], // no built-in Claude Code tools: only the release-agent MCP tools
       // The tool server writes this run's screenshots/logcat/report into runDir.
-      mcpServers: { tools: { type: "http", url: MCP_URL, headers: { "x-evidence-dir": runDir, "x-toolset": toolset } } },
+      mcpServers: {
+        tools: {
+          type: "http",
+          url: MCP_URL,
+          headers: {
+            "x-evidence-dir": runDir,
+            "x-toolset": toolset,
+            ...(args.source ? { "x-source-dir": path.resolve(args.source) } : {}),
+          },
+        },
+      },
       strictMcpConfig: true,
       settingSources: [],
       canUseTool,

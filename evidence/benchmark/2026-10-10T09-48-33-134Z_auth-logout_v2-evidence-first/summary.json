@@ -1,0 +1,74 @@
+{
+  "run_id": "2026-10-10T09-48-33-134Z_auth-logout_v2-evidence-first",
+  "scenario": "auth-logout",
+  "prompt_version": "v2-evidence-first",
+  "toolset": "v2",
+  "source_dir": null,
+  "git_commit": "cf01bdb",
+  "fault_inject": null,
+  "model": "(default)",
+  "started_at": "2026-10-10T09:48:33.151Z",
+  "tool_calls": 23,
+  "tool_errors": 0,
+  "tool_counts": {
+    "diff_apks": 1,
+    "adb_uninstall": 2,
+    "adb_install": 3,
+    "adb_launch": 5,
+    "adb_tap": 2,
+    "adb_force_stop": 3,
+    "adb_screenshot": 3,
+    "adb_logcat_clear": 1,
+    "adb_logcat_dump": 1,
+    "write_report": 1,
+    "request_release_approval": 1
+  },
+  "verdict": "REGRESSION_DETECTED",
+  "gate": {
+    "status": "deny",
+    "reason": "auto-deny (benchmark run)",
+    "verdict": "REGRESSION_DETECTED"
+  },
+  "result": {
+    "subtype": "success",
+    "num_turns": 24,
+    "duration_ms": 75950,
+    "duration_api_ms": 57015,
+    "total_cost_usd": 0.1801154,
+    "usage": {
+      "input_tokens": 30,
+      "cache_creation_input_tokens": 7927,
+      "cache_read_input_tokens": 119296,
+      "output_tokens": 4625,
+      "output_tokens_details": {
+        "thinking_tokens": 356
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 7927,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 730,
+          "cache_read_input_tokens": 11604,
+          "cache_creation_input_tokens": 494,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 494
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    }
+  },
+  "finished_at": "2026-10-10T09:49:50.869Z"
+}

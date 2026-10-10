@@ -54,7 +54,23 @@ under "Build log".
   agent diagnosed the missing `adb`, retried once, did not invent results, and reached the gate.
 - Observed v1 problem: with zero device evidence it still returned `REGRESSION_DETECTED`. It
   needs an explicit "inconclusive" outcome. This is a candidate for the v2 prompt.
-- Not yet run: neatlogs tracing (key not configured), any emulator journey.
+- Done: neatlogs key configured (local `.env`, git-ignored); delivery verified (0 export failures).
+- Tested: first real run on the emulator (Android 17 arm64, `auth-logout`, v1): found the
+  upgrade logout regression unaided. 43 turns, 109 s, $0.28.
+- Done: read the v1 trace and found 3 problems (launch race -> `mCurrentFocus=null` and a
+  repeated dump; a separate dump after every action doubling turns; no INCONCLUSIVE verdict).
+  Built the v2 toolset and the `v2-evidence-first` prompt; v1 is kept selectable for fair reruns.
+- Done: control panel now spawns the agent directly (SSE + browser Allow/Deny), TrueForge removed.
+- Tested: before/after benchmark, 8 real runs (2 per version per scenario), all 8 correct.
+  v2 vs v1: turns -38%, time -18%, cost -22%, cached input tokens -35%. Table in README and
+  `evidence/benchmark/`.
+- Done: `source_impact` tool (optional, `--source`): entire-graph `impact` maps the changed class
+  to the screens that depend on it (AuthManager -> Splash/Login/Dashboard). Not yet run by the agent.
+- Decision: unattended benchmark runs use `--gate auto-allow` (requested by the builder). The
+  default is still the real human gate. The 8 benchmark runs above used auto-deny; the gate is the
+  final step, so this does not affect the measured numbers.
+- Known gap: Entire has 0 checkpoints so far. This coding session started outside the repo
+  folder, so Entire's hooks did not attach. Next sessions start inside the repo.
 
 ## Demo
 
