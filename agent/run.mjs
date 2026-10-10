@@ -13,6 +13,7 @@
 import * as claudeAgentSDK from "@anthropic-ai/claude-agent-sdk";
 import { init, identify, flush, shutdown } from "neatlogs";
 import { wrapClaudeAgentSDK } from "neatlogs/claude-agent-sdk";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
@@ -45,6 +46,8 @@ if (!fs.existsSync(oldApk) || !fs.existsSync(newApk)) {
   process.exit(2);
 }
 const scenario = args.scenario || path.basename(path.dirname(newApk));
+// Prompt "v1-*" runs against the original v1 toolset so baseline runs stay reproducible.
+const toolset = args.prompt.startsWith("v1") ? "v1" : "v2";
 const promptFile = path.join(ROOT, "prompts", `${args.prompt}.md`);
 const systemPrompt = fs.readFileSync(promptFile, "utf8");
 
@@ -132,8 +135,8 @@ if (tracing) {
   await init({
     apiKey: process.env.NEATLOGS_API_KEY,
     workflowName: "apk-release-check",
-    tags: [`prompt:${args.prompt}`, `scenario:${scenario}`],
-    metadata: { run_id: runId, prompt_version: args.prompt, scenario },
+    tags: [`prompt:${args.prompt}`, `toolset:${toolset}`, `scenario:${scenario}`],
+    metadata: { run_id: runId, prompt_version: args.prompt, toolset, scenario },
   });
 } else {
   console.warn("NEATLOGS_API_KEY not set: running without tracing.");
@@ -144,6 +147,9 @@ const summary = {
   run_id: runId,
   scenario,
   prompt_version: args.prompt,
+  toolset,
+  git_commit: gitCommit(),
+  fault_inject: process.env.FAULT_INJECT_NOTE || null,
   model: args.model || "(default)",
   started_at: new Date().toISOString(),
   tool_calls: 0,
@@ -153,6 +159,14 @@ const summary = {
   gate: null,
   result: null,
 };
+
+function gitCommit() {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+  } catch {
+    return null;
+  }
+}
 
 const transcript = fs.createWriteStream(path.join(runDir, "transcript.jsonl"));
 
@@ -166,7 +180,7 @@ async function main() {
       maxTurns: Number(args["max-turns"]),
       tools: [], // no built-in Claude Code tools: only the release-agent MCP tools
       // The tool server writes this run's screenshots/logcat/report into runDir.
-      mcpServers: { tools: { type: "http", url: MCP_URL, headers: { "x-evidence-dir": runDir } } },
+      mcpServers: { tools: { type: "http", url: MCP_URL, headers: { "x-evidence-dir": runDir, "x-toolset": toolset } } },
       strictMcpConfig: true,
       settingSources: [],
       canUseTool,
