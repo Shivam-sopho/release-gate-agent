@@ -55,14 +55,20 @@ Anchor: one silent upgrade regression caught before rollout is worth more than a
 - Starting cash: **$25,000** (founder savings + small angel cheque).
 - Growth: 3 Team customers in month 1, +3 per month, first Enterprise in month 6, a second in
   month 10.
-- Break-even when gross profit ≥ $3,450/month: about **22 Team customers** at typical usage ($155 gross profit each), or
-  16 Team plus 1 Enterprise (≈ $1,050 gross profit).
+- Free apps: 20 in month 1, +10/month, averaging 5 checks each (their cost is included in COGS).
+- Base case (`docs/cfo-ai/projection.csv`): **break-even in month 6** (18 Team + 1 Enterprise),
+  lowest cash **≈ $13.6k** in month 5, steady-state gross margin ≈ 69%, cash ≈ $55k by month 18.
+  Without Enterprise, break-even needs about 22 Team customers at typical usage ($155 gross
+  profit each, before free-tier cost).
 
 The month-by-month revenue, burn and runway are modelled in cfo.ai. See the screenshots below.
 
 ## cfo.ai model
 
-> Screenshots to add: pricing, costs, revenue projection, runway.
+Prompts used with cfo.ai's assistant: [`cfo-ai/ari-prompt.md`](cfo-ai/ari-prompt.md) (base model,
+runway and break-even, and a downside pressure-test).
+
+> Screenshots to add: model, runway, downside scenario.
 
 ## Risks
 
