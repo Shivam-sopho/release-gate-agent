@@ -11,6 +11,10 @@ span, with one LLM span per model turn and one TOOL span per MCP tool call. Trac
 | `03-failure-recovery-tap-error-and-retry.png` | `adb_tap` **ERROR** (injected "closed"), then `adb_wait_for_device`, a fresh `adb_dump_ui`, and a successful `adb_tap` retry. |
 | `04-failure-recovery-output.png` | The run's final output: verdict, what changed, a results table from the emulator, and the fix. |
 | `05-failure-recovery-output-device-problems.png` | The output's "Device problems" section: both recoveries reported by the agent. |
+| `06-v2-notes-run-steps.png` | v2 run on the notes scenario (5:32 PM, the run that posted to Entire Trail #1): 49 steps, 107 s, plus the span graph. |
+| `07-v2-notes-run-output.png` | Its output: REGRESSION_DETECTED with a results table, the fix, and a push-back on the gate ("You approved the release … I'd hold the release until the fix below is in."). |
+| `08-v2-auth-run-output.png` | v2 run on the auth scenario, started from the control panel (5:17 PM, recorded for the demo video): output with results table and fix. |
+| `09-v2-auth-run-steps.png` | Its steps: 46 steps, 94 s. |
 
 **About "Execution Failed" on the 03:15–03:21 PM traces.** These are the unattended benchmark
 runs, started with `--gate auto-deny`. A denied release gate comes back to the SDK as a tool
