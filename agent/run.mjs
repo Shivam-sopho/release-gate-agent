@@ -6,6 +6,7 @@
 // Usage:
 //   node --env-file-if-exists=../.env run.mjs --scenario auth-logout [--prompt v1-baseline]
 //   node --env-file-if-exists=../.env run.mjs --old path/old.apk --new path/new.apk
+//   ... [--trail 1]   also post the verdict as a comment on Entire Trail #1
 //
 // Every run is traced to neatlogs (when NEATLOGS_API_KEY is set) and summarised
 // to runs/<run-id>.json so runs can be compared before/after a change.
@@ -34,6 +35,8 @@ const { values: args } = parseArgs({
     "max-turns": { type: "string", default: "120" },
     // auto-approve / auto-deny the release gate (for unattended benchmark runs only)
     gate: { type: "string", default: "human" },
+    // optional Entire Trail number: post the verdict there as a comment
+    trail: { type: "string" },
   },
 });
 
@@ -162,6 +165,7 @@ const summary = {
   tool_errors: 0,
   tool_counts: {},
   verdict: null,
+  verdict_summary: null,
   gate: null,
   result: null,
 };
@@ -172,6 +176,31 @@ function gitCommit() {
   } catch {
     return null;
   }
+}
+
+// Post the verdict as a comment on an Entire Trail (only with --trail).
+function postToTrail(summary) {
+  if (!args.trail) return;
+  const r = summary.result || {};
+  const wallMs = r.duration_ms ?? Date.parse(summary.finished_at) - Date.parse(summary.started_at);
+  const title = `Release gate: ${summary.verdict || "NO VERDICT"} (${summary.scenario})`;
+  const body = [
+    `**Verdict:** ${summary.verdict || "none"}`,
+    `**Human gate:** ${summary.gate?.status || "none"}`,
+    "",
+    summary.verdict_summary || "_No summary from the agent._",
+    "",
+    `- Turns: ${r.num_turns ?? "n/a"}`,
+    `- Wall time: ${(wallMs / 1000).toFixed(1)}s`,
+    `- Cost: ${r.total_cost_usd != null ? `$${r.total_cost_usd.toFixed(4)}` : "n/a"}`,
+    `- Toolset / prompt: ${summary.toolset} / ${summary.prompt_version}`,
+    `- Run id: \`${summary.run_id}\``,
+    `- Report: \`${path.relative(ROOT, path.join(runDir, "REPORT.md"))}\``,
+  ].join("\n");
+  execFileSync("entire", ["trail", "comment", "add", "--trail", args.trail, "--title", title, "--body", body], {
+    cwd: ROOT,
+    stdio: "pipe",
+  });
 }
 
 const transcript = fs.createWriteStream(path.join(runDir, "transcript.jsonl"));
@@ -215,7 +244,10 @@ async function main() {
         const name = shortName(t.name);
         summary.tool_calls++;
         summary.tool_counts[name] = (summary.tool_counts[name] || 0) + 1;
-        if (name === "request_release_approval") summary.verdict = t.input?.verdict ?? null;
+        if (name === "request_release_approval") {
+          summary.verdict = t.input?.verdict ?? null;
+          summary.verdict_summary = t.input?.summary ?? null;
+        }
         console.log(`→ ${name}(${JSON.stringify(t.input).slice(0, 160)})`);
       }
       if (text) console.log(`\n${text}\n`);
@@ -265,6 +297,12 @@ try {
   summary.finished_at = new Date().toISOString();
   fs.writeFileSync(path.join(runDir, "summary.json"), JSON.stringify(summary, null, 2));
   transcript.end();
+  // Posting to the trail is best-effort: it never fails the run.
+  try {
+    postToTrail(summary);
+  } catch (e) {
+    console.warn(`Could not post to Entire Trail #${args.trail}: ${String(e?.message || e).split("\n")[0]}`);
+  }
   await emit({ type: "turn.done", state: { status: exitCode ? "failed" : "done" } });
   if (tracing) {
     await flush();
