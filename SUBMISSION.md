@@ -16,5 +16,5 @@ evidence-backed report with a code-level fix, and stops at a human release gate.
 | Entire: checkpoints | Checkpoint `01M4JN7HHKQ28WF2HYV3VGEN0T`: https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/d94f4ef370004e38a3259b8deb2840d7201a119f |
 | Entire: entire-graph (inside the agent) | The `source_impact` tool runs `entire graph impact` to map a changed class to the screens that depend on it: [`docs/entire.md`](docs/entire.md) |
 | cfo.ai business plan | [`docs/business-plan.md`](docs/business-plan.md): pricing, costs (from measured per-run cost), revenue, runway |
-| Building in public | POST_LINKS |
+| Building in public | Day 1: https://x.com/chotukv1/status/2108866797567156473 (all posts tagged #neatHack) |
 | Commits during the hackathon | All commits are dated Oct 10, 2026 or later. Prior work is disclosed in [`hackathon.md`](hackathon.md) |
