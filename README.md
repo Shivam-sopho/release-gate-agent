@@ -7,7 +7,8 @@ through those journeys on both builds, writes an evidence-backed report with a c
 and then **stops at a human release gate**: the release does not ship until a person clicks
 Allow.
 
-Built for [neatHack](https://neatlogs.com/hackathon) (Oct 10–12, 2026). #neatHack
+Built for [neatHack](https://neatlogs.com/hackathon) (Oct 10–12, 2026). #neatHack ·
+**[Submission summary](SUBMISSION.md)** · [Demo script](docs/demo-script.md)
 
 ## Why
 
@@ -115,18 +116,26 @@ tokens used), also visible on each neatlogs trace. Filter traces in neatlogs by 
 
 Reproduce: `scripts/bench.sh auth-logout:v1-baseline auth-logout:v2-evidence-first`.
 
-### Entire: repository context for the coding agent that built this
+### Entire: inside the agent, and in how we built it
 
-Entire is enabled in this repo for Claude Code (`.entire/settings.json`, `.claude/settings.json`
-hooks). Coding sessions are captured as checkpoints linked to commits, and
-[entire-graph](https://docs.entire.io/guides/graph/overview) is installed
-(`AGENTS.md`/`CLAUDE.md`), so the coding agent searches a code graph before grepping. See
-[`docs/entire.md`](docs/entire.md) for checkpoint and graph output.
+- **entire-graph inside the agent.** `diff_apks` says *which compiled class changed*. When the
+  app's source is available (`--source`), the agent's `source_impact` tool runs
+  `entire graph impact` on that class to find which screens depend on it (`AuthManager` →
+  Splash/Login/Dashboard). The agent then picks journeys from that, as in the
+  [failure-recovery run](evidence/failure-recovery).
+- **Checkpoints for the coding agent.** Entire is enabled for Claude Code in this repo. Checkpoint
+  [`01M4JN7HHKQ28WF2HYV3VGEN0T`](https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/d94f4ef370004e38a3259b8deb2840d7201a119f)
+  captures the session that fixed the control panel's INCONCLUSIVE verdict display: prompt,
+  decisions and diff.
+- entire-graph's agent guide is installed in `AGENTS.md`/`CLAUDE.md`.
+
+Details and raw output: [`docs/entire.md`](docs/entire.md).
 
 ### cfo.ai: the business plan
 
-See [`docs/business-plan.md`](docs/business-plan.md): pricing, unit costs (from the measured
-per-run cost in neatlogs), revenue and runway, built in cfo.ai.
+See [`docs/business-plan.md`](docs/business-plan.md): $199/month per app, cost of goods about
+$1.10 per check at production scale (from the measured $0.21 per check on the demo apps, budgeted
+up for real apps), break-even at about 22 Team customers. Modelled in cfo.ai.
 
 ## Run it
 
