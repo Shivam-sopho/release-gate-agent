@@ -123,8 +123,21 @@ neatlogs / Entire / cfo.ai screens, and Kokoro TTS narration.
 
 ## Known limitations and next steps
 
-Pending.
+- `diff_apks` is a string-pool and class-hash diff, not a decompiler. It finds *which* class
+  changed, not a method-level semantic diff.
+- Tested on two small demo apps on one emulator image (Android 17, arm64). Production apps will
+  need more journeys; the business plan budgets $1.00 model cost per check instead of the measured
+  $0.21.
+- No text-input tool yet: the agent logs in with empty fields (the demo apps default to "demo").
+  Next: `adb_input_text`.
+- Benchmarks are small (2 runs per version per scenario). Treat the deltas as indicative.
+- Entire Trail #1 could not be approved by its author (Entire blocks self-approval), so it was
+  merged by fast-forwarding main; GitHub and Entire both show it as merged.
+- Next: CI mode (run on every release-candidate build and post to its Trail), more apps and
+  bug classes (permissions, crashes on upgrade, migrations), cheaper models for navigation steps,
+  measured with neatlogs.
 
 ## Submission
 
-Pending. Submissions open Oct 12, 7:00–11:55 PM IST.
+Ready. Everything is in [`SUBMISSION.md`](SUBMISSION.md). Final step (Oct 12, 7:00–11:55 PM IST):
+quote the official neatlogs submission post on X with team, project, repo and demo link.
