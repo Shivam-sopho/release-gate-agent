@@ -139,6 +139,29 @@ def image_segment(name, image, narration, label, tail=1.2):
     return out
 
 
+def clip_segment(name, clip, narration, label, speed=1.0):
+    """A screen recording fitted under a label bar; the last frame holds if narration runs longer."""
+    src = duration(clip)
+    vid_len = src / speed
+    seg_len = max(vid_len, duration(narration) + 0.8)
+    hold = seg_len - vid_len
+    out = SEG / f"{name}.mp4"
+    f = [
+        f"color=c={BG}:s=1920x1080:r={FPS}:d={seg_len:.3f}[bg]",
+        f"[0:v]setpts=(PTS-STARTPTS)/{speed},fps={FPS},scale=1840:950:force_original_aspect_ratio=decrease,"
+        f"tpad=stop_mode=clone:stop_duration={hold + 0.1:.3f}[c]",
+        "[bg][c]overlay=(W-w)/2:120:shortest=1[v1]",
+        "[v1][2:v]overlay=0:0[v2]",
+        f"[v2]format=yuv420p,fade=t=in:st=0:d=0.3,fade=t=out:st={seg_len - 0.3:.3f}:d=0.3[v]",
+        f"[1:a]adelay=300|300,apad,atrim=0:{seg_len:.3f},afade=t=out:st={seg_len - 0.3:.3f}:d=0.3[a]",
+    ]
+    run(["-i", str(clip), "-i", str(narration), "-i", str(HERE / "labels" / f"{label}.png"),
+         "-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]", "-t", f"{seg_len:.3f}",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+         "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-r", str(FPS), str(out)])
+    return out
+
+
 def main():
     make_shots()
     tl = json.loads((OUT / "timeline.json").read_text())
@@ -154,9 +177,8 @@ def main():
         live_segment("06_liveC", tl["approval_shown"] - 1.5, tl["run_done"] + 1.5, 1.0, "liveC", n / "live3.wav", emu_offset),
         live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.0, "liveD", n / "live4.wav", emu_offset, show_emulator=False),
         slide_segment("08_neatlogs", s / "s4.png", n / "s4.wav"),
-        image_segment("08b_neatlogs_real", SHOTS / "neatlogs_v1_v2.png", n / "shot1.wav", "shotNeatlogs"),
         slide_segment("09_recovery", s / "s5.png", n / "s5.wav"),
-        image_segment("09b_recovery_real", SHOTS / "neatlogs_recovery.png", n / "shot2.wav", "shotRecovery"),
+        clip_segment("09b_neatlogs_live", HERE / "clips" / "neatlogs-live.mp4", n / "shotLive.wav", "shotLive"),
         slide_segment("10_entire", s / "s6.png", n / "s6.wav"),
         image_segment("10b_trail_real", SHOTS / "entire_trail.png", n / "shot3.wav", "shotTrail"),
         slide_segment("11_cfo", s / "s7.png", n / "s7.wav"),
