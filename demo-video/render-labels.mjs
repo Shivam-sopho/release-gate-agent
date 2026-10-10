@@ -10,6 +10,7 @@ const labels = {
   shotNeatlogs: ["NEATLOGS · REAL TRACES", "Same app, same verdict. v1: 66 steps · 95 s  →  v2: 45 steps · 77 s"],
   shotRecovery: ["NEATLOGS · FAILURE RECOVERY", "Failed install, launch and tap in red. Then wait for device, retry, ok"],
   shotLive: ["NEATLOGS · LIVE DASHBOARD", "v1 trace → failure-recovery trace (errors in red, then retries) → v2 output"],
+  shotCfo: ["CFO.AI · LIVE MODEL", "Operating dashboard, model-cost slider, downside and pricing decision"],
   shotTrail: ["ENTIRE · TRAIL #1", "The agent's verdict posted on the Trail, next to the runner review"],
 };
 const dir = path.join(import.meta.dirname, "labels");

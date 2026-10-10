@@ -65,6 +65,13 @@ The month-by-month revenue, burn and runway are modelled in cfo.ai. See the scre
 
 ## cfo.ai model
 
+**Live cfo.ai model (public links):**
+
+- [When does the plan turn cash-flow positive, and how much cushion remains?](https://cfo.ai/s/jWmktN7bEdLMt1m1): operating dashboard
+- [How the 18-month forecast measures burn, cash flow, and runway](https://cfo.ai/s/zze83cWNe8lwvVTN): monthly forecast
+- [What operating assumptions shape the financial plan?](https://cfo.ai/s/U1TR9W2XvuSiuaog): assumptions
+- [Can Team pricing protect the $10,000 reserve under the downside?](https://cfo.ai/s/6lbcuRXXY-u6pln5): downside and pricing decision
+
 Prompts used with cfo.ai's assistant Ari: [`cfo-ai/ari-prompt.md`](cfo-ai/ari-prompt.md).
 
 **Base case (cfo.ai):** cash-flow positive in **month 6 (Mar-27)**, by $5 that month. Lowest cash

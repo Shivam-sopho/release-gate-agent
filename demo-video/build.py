@@ -16,6 +16,7 @@ FPS = 30
 # The panel is recorded at 1920x1080 and fills the frame. While the agent works, the
 # emulator is shown picture-in-picture over the panel's left sidebar (idle during a run).
 PIP_X, PIP_Y, PIP_H = 40, 132, 930
+CFO_SPEED = float(__import__("os").environ.get("CFO_SPEED", "1.0"))  # speed-up for the cfo.ai recording
 
 
 def run(args):
@@ -182,6 +183,8 @@ def main():
         slide_segment("10_entire", s / "s6.png", n / "s6.wav"),
         image_segment("10b_trail_real", SHOTS / "entire_trail.png", n / "shot3.wav", "shotTrail"),
         slide_segment("11_cfo", s / "s7.png", n / "s7.wav"),
+        *([clip_segment("11b_cfo_live", HERE / "clips" / "cfo-live.mp4", n / "cfoLive.wav", "shotCfo",
+                        speed=CFO_SPEED)] if (HERE / "clips" / "cfo-live.mp4").exists() else []),
         slide_segment("12_close", s / "s8.png", n / "s8.wav", tail=2.5),
     ]
     listing = SEG / "list.txt"
