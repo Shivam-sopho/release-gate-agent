@@ -16,7 +16,7 @@ FPS = 30
 # The panel is recorded at 1920x1080 and fills the frame. While the agent works, the
 # emulator is shown picture-in-picture over the panel's left sidebar (idle during a run).
 PIP_X, PIP_Y, PIP_H = 40, 132, 930
-CFO_SPEED = float(__import__("os").environ.get("CFO_SPEED", "1.0"))  # speed-up for the cfo.ai recording
+CFO_SPEED = float(__import__("os").environ.get("CFO_SPEED", "3.0"))  # speed-up for the cfo.ai recording
 
 
 def run(args):
