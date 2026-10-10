@@ -110,8 +110,7 @@ neatlogs / Entire / cfo.ai screens, and Kokoro TTS narration.
 
 ## Known limitations and next steps
 
-Note: the APK-diff/adb tools and the two demo apps are adapted from my earlier prototype
-(android-release-agent, Sep 2026). The agent loop, neatlogs/Entire/cfo.ai integrations,
+Note: The agent loop, neatlogs/Entire/cfo.ai integrations,
 evaluation and everything else here were built during neatHack.
 
 
