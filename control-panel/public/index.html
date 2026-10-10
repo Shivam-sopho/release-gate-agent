@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Autonomous Android Release Agent</title>
+<title>Release Gate Agent</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>" />
 <style>
   :root {
@@ -217,7 +217,7 @@
 <header>
   <div class="logo">🤖</div>
   <div>
-    <h1>Autonomous Android Release Agent</h1>
+    <h1>Release Gate Agent</h1>
     <p>Give it old.apk + new.apk. It diffs the compiled builds, decides what to test, drives the emulator, and gates the release on your approval.</p>
   </div>
 </header>
@@ -241,8 +241,7 @@
     <div id="detectedPackage" style="display:none; font-size: 11.5px; color: var(--dim); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: ui-monospace, monospace;"></div>
 
     <div class="sidebar-label" style="margin-top: 8px;">Run</div>
-    <button class="run primary" id="runBtn" disabled><span>▶</span> Run via TrueForge</button>
-    <button class="run live" id="runLiveBtn" disabled><span>⚡</span> Watch Live Run with Trueforge Harness</button>
+    <button class="run primary" id="runBtn" disabled><span>▶</span> Run release check</button>
     <div class="status-pill" id="statusPill"><span class="status-dot"></span><span id="status">Waiting for both APKs…</span></div>
     <div id="reportLinks" style="display:none; flex-direction:column; gap:8px; margin-top: 4px;">
       <a class="run" style="background: linear-gradient(135deg, var(--good), #24a85f); border-color: transparent; color:#06210f;" href="/report" target="_blank"><span>📄</span> Open Report</a>
@@ -266,13 +265,11 @@ const dropNew = document.getElementById('dropNew');
 const fileOld = document.getElementById('fileOld');
 const fileNew = document.getElementById('fileNew');
 const runBtn = document.getElementById('runBtn');
-const runLiveBtn = document.getElementById('runLiveBtn');
 const statusEl = document.getElementById('status');
 const statusPill = document.getElementById('statusPill');
 const logEl = document.getElementById('log');
 
 let oldFile = null, newFile = null;
-let liveMode = false;
 
 const TITLE_ICON = { running: '⏳', done: '✅', error: '⚠️' };
 function setStatus(text, mode) {
@@ -294,7 +291,7 @@ function wireDrop(dropEl, input, onFile) {
 }
 wireDrop(dropOld, fileOld, (f) => { oldFile = f; document.getElementById('dropOldLabel').textContent = f.name; dropOld.classList.add('filled'); checkReady(); });
 wireDrop(dropNew, fileNew, (f) => { newFile = f; document.getElementById('dropNewLabel').textContent = f.name; dropNew.classList.add('filled'); checkReady(); });
-function checkReady() { runBtn.disabled = !(oldFile && newFile); runLiveBtn.disabled = !(oldFile && newFile); }
+function checkReady() { runBtn.disabled = !(oldFile && newFile); }
 
 function showReportLink() {
   document.getElementById('reportLinks').style.display = 'flex';
@@ -323,14 +320,15 @@ function renderMaybeEvidence(text) {
   return `<pre>${escapeHtml(text)}</pre>`;
 }
 
-// Phase tracker: maps a real tool name (already unwrapped from TrueForge's
-// call_tool envelope if needed) to a phase, and marks earlier phases done.
+// Phase tracker: maps a real tool name (unwrapped from a generic call_tool
+// envelope if needed) to a phase, and marks earlier phases done.
 const PHASE_ORDER = ['diff', 'journeys', 'report', 'approval'];
 const PHASE_FOR_TOOL = {
   diff_apks: 'diff',
   adb_install: 'journeys', adb_force_stop: 'journeys', adb_launch: 'journeys',
   adb_tap: 'journeys', adb_dump_ui: 'journeys', adb_screenshot: 'journeys',
   adb_logcat_clear: 'journeys', adb_logcat_dump: 'journeys',
+  adb_uninstall: 'journeys', adb_wait_for_device: 'journeys',
   write_report: 'report',
   request_release_approval: 'approval',
 };
@@ -350,7 +348,7 @@ function resetPhases() {
 }
 
 function realToolNameAndArgs(name, args) {
-  // TrueForge sometimes wraps our actual tools behind a generic call_tool(mcp_server, tool_name, input).
+  // Some harnesses wrap tools behind a generic call_tool(mcp_server, tool_name, input).
   if (name === 'call_tool' && args && args.tool_name) {
     return { name: args.tool_name, args: args.input || {} };
   }
@@ -440,20 +438,11 @@ function handleEvent(ev) {
 
 async function decide(thread_id, tool_call_id, status) {
   addEntry('done', null, null, `— you chose: ${status} —`);
-  if (liveMode) {
-    await fetch('/api/live/decide', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool_call_id, status }),
-    });
-    return;
-  }
-  const res = await fetch('/api/approve', {
+  await fetch('/api/live/decide', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ thread_id, tool_call_id, status }),
+    body: JSON.stringify({ tool_call_id, status }),
   });
-  await consumeStream(res);
 }
 
 async function doUpload() {
@@ -481,33 +470,23 @@ async function doUpload() {
 }
 
 runBtn.addEventListener('click', async () => {
-  liveMode = false;
   runBtn.disabled = true;
-  runLiveBtn.disabled = true;
   document.getElementById('reportLinks').style.display = 'none';
-  if (!(await doUpload())) { runBtn.disabled = false; runLiveBtn.disabled = false; return; }
+  if (!(await doUpload())) { runBtn.disabled = false; return; }
   setStatus('Agent running…', 'running');
-  const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-  await consumeStream(res);
-  setStatus('Done.', 'done');
-});
-
-runLiveBtn.addEventListener('click', async () => {
-  liveMode = true;
-  runBtn.disabled = true;
-  runLiveBtn.disabled = true;
-  document.getElementById('reportLinks').style.display = 'none';
-  if (!(await doUpload())) { runBtn.disabled = false; runLiveBtn.disabled = false; return; }
-  setStatus('Watching live run…', 'running');
   const es = new EventSource('/api/live/stream');
   es.onmessage = (ev) => {
     try {
       const parsed = JSON.parse(ev.data);
       handleEvent(parsed);
-      if (parsed.type === 'turn.done') setStatus('Done.', 'done');
+      if (parsed.type === 'turn.done') { setStatus('Done.', 'done'); es.close(); runBtn.disabled = false; }
     } catch (e) { console.error('bad live event', ev.data, e); }
   };
   es.onerror = () => { setStatus('Live stream disconnected.', 'error'); };
+  es.onopen = async () => {
+    const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!res.ok) { setStatus('Could not start run.', 'error'); addEntry('error', 'Error', '⚠', escapeHtml(await res.text())); }
+  };
 });
 </script>
 </body>

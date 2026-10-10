@@ -157,6 +157,7 @@ const summary = {
 const transcript = fs.createWriteStream(path.join(runDir, "transcript.jsonl"));
 
 async function main() {
+  await emit({ type: "run.started", run_id: runId, run_dir: runDir, prompt_version: args.prompt });
   const stream = query({
     prompt: userMessage,
     options: {

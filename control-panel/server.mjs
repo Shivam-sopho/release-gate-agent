@@ -1,24 +1,33 @@
 import express from "express";
 import multer from "multer";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import { marked } from "marked";
 
 const PORT = process.env.PORT || 8792;
-const TRUEFORGE_BASE = process.env.TRUEFORGE_BASE || "http://localhost:8790";
-const AGENT_NAME = process.env.AGENT_NAME || "android-release-agent";
-const ARTIFACTS_DIR = process.env.ARTIFACTS_DIR || path.resolve("../artifacts");
-const EVIDENCE_DIR = process.env.EVIDENCE_DIR || path.resolve("../evidence");
-fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
-fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+const ROOT = path.resolve(import.meta.dirname, "..");
+const AGENT_DIR = path.join(ROOT, "agent");
+const RUNS_DIR = path.join(ROOT, "runs");
+const UPLOADS_DIR = path.join(import.meta.dirname, ".uploads");
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const upload = multer({ dest: path.join(ARTIFACTS_DIR, ".uploads") });
-const LIVE_MARKER = "/tmp/android-release-agent-live-run-marker.json";
-const LIVE_DECISION = "/tmp/android-release-agent-live-decision.json";
+const upload = multer({ dest: UPLOADS_DIR });
+
+function sdkHome() {
+  const candidates = [
+    process.env.ANDROID_HOME,
+    process.env.ANDROID_SDK_ROOT,
+    path.join(os.homedir(), "Library/Android/sdk"),
+    path.join(os.homedir(), "Android/Sdk"),
+  ];
+  return candidates.find((p) => p && fs.existsSync(p)) || null;
+}
 
 function findAapt() {
-  const home = process.env.ANDROID_HOME || `${process.env.HOME}/Android/Sdk`;
+  const home = sdkHome();
+  if (!home) return null;
   const buildTools = path.join(home, "build-tools");
   if (!fs.existsSync(buildTools)) return null;
   const versions = fs.readdirSync(buildTools).sort().reverse();
@@ -45,30 +54,23 @@ function detectPackageId(apkPath) {
 
 const app = express();
 app.use(express.json());
-app.use("/evidence", express.static(EVIDENCE_DIR));
-app.use(express.static("public"));
+app.use(express.static(path.join(import.meta.dirname, "public")));
 
-// In-memory single-demo session state (fine for a one-machine hackathon demo).
-let sessionId = null;
+// ---------------------------------------------------------------------------
+// Runs: /api/run spawns agent/run.mjs with CONTROL_PANEL_URL pointing back here.
+// The agent posts its events to /api/live/event, they fan out to the browser over
+// SSE, and the browser's Allow/Deny lands in /api/live/decide, which the agent's
+// release gate polls.
+// ---------------------------------------------------------------------------
 let currentPackageId = null;
+let currentRunDir = null;
+let agentProcess = null;
+let liveClients = [];
 
-async function ensureSession() {
-  if (sessionId) return sessionId;
-  const res = await fetch(`${TRUEFORGE_BASE}/api/v1/sessions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ agent: { name: AGENT_NAME } }),
-  });
-  if (!res.ok) throw new Error(`create session failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  sessionId = data.data.id;
-  return sessionId;
+function broadcast(event) {
+  const payload = `data: ${JSON.stringify(event)}\n\n`;
+  for (const c of liveClients) c.write(payload);
 }
-
-app.post("/api/reset", async (_req, res) => {
-  sessionId = null;
-  res.json({ ok: true });
-});
 
 app.post("/api/upload", upload.fields([{ name: "old_apk" }, { name: "new_apk" }]), async (req, res) => {
   try {
@@ -76,37 +78,17 @@ app.post("/api/upload", upload.fields([{ name: "old_apk" }, { name: "new_apk" }]
     const newFile = req.files?.new_apk?.[0];
     if (!oldFile || !newFile) return res.status(400).json({ error: "old_apk and new_apk are both required" });
 
-    const oldDest = path.join(ARTIFACTS_DIR, "old.apk");
-    const newDest = path.join(ARTIFACTS_DIR, "new.apk");
-    fs.copyFileSync(oldFile.path, oldDest);
-    fs.copyFileSync(newFile.path, newDest);
-    fs.unlinkSync(oldFile.path);
-    fs.unlinkSync(newFile.path);
-
-    // Fresh evidence dir per run.
-    fs.rmSync(EVIDENCE_DIR, { recursive: true, force: true });
-    fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+    const oldDest = path.join(UPLOADS_DIR, "old.apk");
+    const newDest = path.join(UPLOADS_DIR, "new.apk");
+    fs.renameSync(oldFile.path, oldDest);
+    fs.renameSync(newFile.path, newDest);
 
     currentPackageId = detectPackageId(newDest) || detectPackageId(oldDest);
-    fs.writeFileSync(
-      LIVE_MARKER,
-      JSON.stringify({ ts: Date.now(), old_apk: oldDest, new_apk: newDest, package_id: currentPackageId })
-    );
-
     res.json({ ok: true, old_apk: oldDest, new_apk: newDest, package_id: currentPackageId });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
 });
-
-// ---------------------------------------------------------------------------
-// Live mode: instead of proxying to TrueForge, a locally-driven process (see
-// mcp-server/run-live-demo.mjs) pushes real events here as it performs real
-// tool calls, and the browser renders them exactly like a TrueForge turn
-// stream — including a real approval-gate pause the browser's Allow/Deny
-// buttons resolve.
-// ---------------------------------------------------------------------------
-let liveClients = [];
 
 app.get("/api/live/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -120,91 +102,62 @@ app.get("/api/live/stream", (req, res) => {
 });
 
 app.post("/api/live/event", (req, res) => {
-  const payload = `data: ${JSON.stringify(req.body)}\n\n`;
-  for (const c of liveClients) c.write(payload);
+  if (req.body.type === "run.started") currentRunDir = req.body.run_dir;
+  broadcast(req.body);
   res.json({ ok: true, clients: liveClients.length });
 });
 
+let pendingDecision = null;
+
 app.post("/api/live/decide", (req, res) => {
-  fs.writeFileSync(LIVE_DECISION, JSON.stringify(req.body));
+  pendingDecision = req.body;
   res.json({ ok: true });
 });
 
 app.get("/api/live/decision", (req, res) => {
-  if (!fs.existsSync(LIVE_DECISION)) return res.json({ decision: null });
-  const d = JSON.parse(fs.readFileSync(LIVE_DECISION, "utf8"));
-  fs.unlinkSync(LIVE_DECISION);
-  res.json({ decision: d });
+  const decision = pendingDecision;
+  pendingDecision = null;
+  res.json({ decision });
 });
 
-app.get("/api/live/marker", (req, res) => {
-  if (!fs.existsSync(LIVE_MARKER)) return res.json({ marker: null });
-  res.json({ marker: JSON.parse(fs.readFileSync(LIVE_MARKER, "utf8")) });
-});
-
-async function proxyTurn(body, res) {
-  const sid = await ensureSession();
-  const upstream = await fetch(`${TRUEFORGE_BASE}/api/v1/sessions/${sid}/turns`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+app.post("/api/run", (req, res) => {
+  if (agentProcess) return res.status(409).json({ error: "a run is already in progress" });
+  const args = [
+    "--env-file-if-exists=../.env",
+    "run.mjs",
+    "--old", path.join(UPLOADS_DIR, "old.apk"),
+    "--new", path.join(UPLOADS_DIR, "new.apk"),
+    "--prompt", req.body?.prompt || process.env.AGENT_PROMPT || "v2-evidence-first",
+  ];
+  if (currentPackageId) args.push("--package", currentPackageId);
+  pendingDecision = null;
+  agentProcess = spawn(process.execPath, args, {
+    cwd: AGENT_DIR,
+    env: { ...process.env, CONTROL_PANEL_URL: `http://127.0.0.1:${PORT}` },
+    stdio: ["ignore", "inherit", "inherit"],
   });
-  res.status(upstream.status);
-  res.setHeader("Content-Type", upstream.headers.get("content-type") || "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  if (!upstream.body) {
-    res.end();
-    return;
-  }
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
-  req_loop: while (true) {
-    const { done, value } = await reader.read();
-    if (done) break req_loop;
-    res.write(decoder.decode(value, { stream: true }));
-  }
-  res.end();
+  agentProcess.on("exit", (code) => {
+    agentProcess = null;
+    if (code) broadcast({ type: "turn.done", state: { status: "failed" } });
+  });
+  res.json({ ok: true });
+});
+
+function latestRunDir() {
+  if (currentRunDir && fs.existsSync(currentRunDir)) return currentRunDir;
+  if (!fs.existsSync(RUNS_DIR)) return null;
+  const dirs = fs.readdirSync(RUNS_DIR).sort().reverse();
+  return dirs.length ? path.join(RUNS_DIR, dirs[0]) : null;
 }
 
-app.post("/api/run", async (req, res) => {
-  const oldPath = path.join(ARTIFACTS_DIR, "old.apk");
-  const newPath = path.join(ARTIFACTS_DIR, "new.apk");
-  const pkg = currentPackageId || detectPackageId(newPath) || detectPackageId(oldPath);
-  const message =
-    `A new Android release is ready to ship. Analyze it end to end and give a release-readiness verdict.\n\n` +
-    `old.apk: ${oldPath}\n` +
-    `new.apk: ${newPath}\n` +
-    (pkg
-      ? `Both are the same app (package ${pkg}), old is the currently-shipped build, new is the candidate release.\n\n`
-      : `Both are the same app (currently-shipped build vs. release candidate) — detect the applicationId yourself from the diff/manifest.\n\n`) +
-    `Do this:\n` +
-    `1. diff_apks to see what actually changed in the compiled build.\n` +
-    `2. Reason about which user journeys that change could affect (don't just crawl randomly — pick journeys based on what the diff implies, whatever this specific app turns out to do).\n` +
-    `3. For each journey you pick: adb_install old.apk fresh, drive it with adb_tap/adb_dump_ui (use adb_dump_ui first to find real element bounds — never guess coordinates, this app's layout is unknown to you), adb_screenshot at key steps, adb_logcat_clear before / adb_logcat_dump after. Then adb_force_stop, adb_install -r new.apk (in-place upgrade, keeps app data), repeat the same journey, and compare the end state (use adb_dump_ui's focused_window as ground truth for which screen you ended up on).\n` +
-    `4. Prioritize whatever the diff actually implicates — if it touches auth/session code, test login and an 'existing session survives an app upgrade' journey; if it touches something else, test that instead.\n` +
-    `5. If you find a regression, propose a concrete fix grounded in the actual diff (the specific renamed identifier, the specific missing check) — real code, not generic advice.\n` +
-    `6. write_report with a markdown regression report: what changed, what you tested and why, what you found, your suggested fix (with code) if applicable, and evidence file paths.\n` +
-    `7. Always finish by calling request_release_approval with your verdict — even if everything passed.`;
-
-  await proxyTurn({ input: [{ type: "user.message", content: message }], stream: true }, res);
-});
-
-app.post("/api/approve", async (req, res) => {
-  const { thread_id, tool_call_id, status, reason } = req.body;
-  const approval = status === "allow" ? { status: "allow" } : { status: "deny", reason: reason || "Denied by reviewer" };
-  await proxyTurn(
-    {
-      input: [{ type: "user.tool_approval", thread_id, tool_call_id, approval }],
-      previous_turn_id: "auto",
-      stream: true,
-    },
-    res
-  );
+app.use("/evidence", (req, res, next) => {
+  const dir = latestRunDir();
+  if (!dir) return res.status(404).send("No runs yet.");
+  express.static(dir)(req, res, next);
 });
 
 app.get("/report", (req, res) => {
-  const reportPath = path.join(EVIDENCE_DIR, "REPORT.md");
+  const reportPath = path.join(latestRunDir() || "", "REPORT.md");
   if (!fs.existsSync(reportPath)) return res.status(404).send("No report yet — run the agent first.");
   const md = fs.readFileSync(reportPath, "utf8");
   const html = marked.parse(md, { gfm: true });
