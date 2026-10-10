@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#0b0d12;--panel:#141821;--line:#262d3b;--text:#eef1f6;--muted:#8b95a7;--accent:#7c6cff;--accent2:#a99bff;--good:#3ddc97;--bad:#ff5d6c;--warn:#ffb454;--mono:"SF Mono",Menlo,monospace}
+*{box-sizing:border-box;margin:0}
+body{width:1920px;height:1080px;overflow:hidden;color:var(--text);font-family:-apple-system,"SF Pro Display","Helvetica Neue",sans-serif;
+ background:radial-gradient(1200px 700px at 78% 30%,#1c1840 0%,rgba(11,13,18,0) 60%),radial-gradient(900px 600px at 10% 100%,#0f2a22 0%,rgba(11,13,18,0) 55%),var(--bg);position:relative}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px}
+.left{position:absolute;left:110px;top:96px;width:1000px}
+.kick{display:inline-flex;gap:14px;align-items:center;font:600 24px var(--mono);letter-spacing:.1em;color:var(--accent2);text-transform:uppercase}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--good);box-shadow:0 0 16px var(--good)}
+h1{font-size:104px;line-height:1;letter-spacing:-.045em;font-weight:850;margin:30px 0 28px;white-space:nowrap}
+h1 span{background:linear-gradient(90deg,#fff,#a99bff);-webkit-background-clip:text;color:transparent}
+.pitch{font-size:40px;line-height:1.3;color:var(--muted);max-width:960px}
+.pitch b{color:var(--text);font-weight:650}
+.stats{display:flex;gap:22px;margin-top:54px}
+.stat{background:rgba(20,24,33,.85);border:1px solid var(--line);border-radius:22px;padding:22px 26px;min-width:200px}
+.stat .n{font-size:60px;font-weight:800;letter-spacing:-.03em}
+.stat .l{font-size:21px;color:var(--muted);margin-top:4px;line-height:1.3}
+.g{color:var(--good)}.a{color:var(--accent2)}.w{color:var(--warn)}
+.tools{position:absolute;left:110px;bottom:84px;display:flex;gap:16px;align-items:center}
+.tools .lbl{font:600 20px var(--mono);color:var(--muted);letter-spacing:.08em;margin-right:6px}
+.chip{font:600 24px var(--mono);padding:12px 22px;border-radius:999px;border:1.5px solid var(--line);background:rgba(20,24,33,.85)}
+/* phones */
+.phones{position:absolute;right:120px;top:140px;display:flex;gap:96px;align-items:flex-start}
+.ph{width:270px;height:530px;border-radius:52px;background:#05060a;border:2px solid #2c3446;padding:14px;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.scr{width:100%;height:100%;border-radius:40px;background:#f4f5f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#1d2230;position:relative;overflow:hidden}
+.ver{position:absolute;top:22px;font:600 18px var(--mono);color:#6b7385}
+.big{font-size:27px;font-weight:750;text-align:center}
+.btn{width:180px;height:48px;border-radius:12px;background:#dfe2e8;display:flex;align-items:center;justify-content:center;font:600 18px var(--mono);color:#555}
+.in{width:180px;height:40px;border-radius:10px;border:1.5px solid #c9ced8;background:#fff}
+.ph.bad{border-color:var(--bad);box-shadow:0 0 0 2px rgba(255,93,108,.25),0 30px 80px rgba(0,0,0,.55)}
+.arrow{position:absolute;right:408px;top:370px;font-size:52px;color:var(--muted)}
+.cap{position:absolute;right:120px;top:690px;width:636px;display:flex;justify-content:space-between;font:600 20px var(--mono)}
+.verdict{position:absolute;right:120px;top:735px;width:636px;border-radius:20px;border:1.5px solid var(--bad);background:rgba(255,93,108,.08);padding:18px 22px;display:flex;align-items:center;gap:20px}
+.verdict .t{font:700 22px var(--mono);color:var(--bad);white-space:nowrap}
+.verdict .s{font-size:18px;color:var(--muted);line-height:1.45;white-space:nowrap}
+.gate{position:absolute;right:120px;top:90px;font:600 20px var(--mono);color:var(--muted)}
+.qr{position:absolute;right:120px;bottom:-1000px}
+.qrbox{position:absolute;right:120px;bottom:60px;display:flex;gap:18px;align-items:center}
+.qrbox .q{width:110px;height:110px;background:#fff;border-radius:14px;padding:10px}
+.qrbox .q svg{width:100%;height:100%;display:block}
+.qrbox .tx{font:600 20px var(--mono);color:var(--muted);line-height:1.5}
+.qrbox .tx b{color:var(--text)}
+.flow{position:absolute;left:110px;top:745px;display:flex;align-items:center;gap:12px;font:600 22px var(--mono);white-space:nowrap}
+.flow .st{padding:12px 18px;border-radius:14px;border:1.5px solid var(--line);background:rgba(20,24,33,.85);color:var(--text)}
+.flow .st.hg{border-color:var(--accent);color:var(--accent2)}
+.flow .ar{color:var(--muted)}
+.flowlbl{position:absolute;left:110px;top:712px;font:600 18px var(--mono);letter-spacing:.1em;color:var(--muted)}
+</style></head><body><div class="grid"></div>
+<div class="left">
+ <div class="kick"><span class="dot"></span>#neatHack · autonomous agent</div>
+ <h1><span>release-gate-agent</span></h1>
+ <p class="pitch">Diffs two <b>compiled</b> Android builds, tests the risky journeys on a <b>real emulator</b>, and <b>never ships without a human.</b></p>
+ <div class="stats">
+  <div class="stat"><div class="n g">8/8</div><div class="l">correct verdicts<br/>on real runs</div></div>
+  <div class="stat"><div class="n a">−38%</div><div class="l">agent turns<br/>after neatlogs fixes</div></div>
+  <div class="stat"><div class="n a">−22%</div><div class="l">cost per check<br/>same accuracy</div></div>
+  <div class="stat"><div class="n w">$349</div><div class="l">price, stress-tested<br/>in cfo.ai</div></div>
+ </div>
+</div>
+<div class="gate">THE BUG IT CATCHES</div>
+<div class="phones">
+ <div class="ph"><div class="scr"><div class="ver">v1.0</div><div class="big" style="color:#16a36b">Welcome, demo</div><div class="btn">LOG OUT</div></div></div>
+ <div class="ph bad"><div class="scr"><div class="ver">v2.0 · after update</div><div class="big" style="color:#d93a4a">Sign in</div><div class="in"></div><div class="in"></div><div class="btn" style="background:#c9ced8">LOG IN</div></div></div>
+</div>
+<div class="arrow">→</div>
+<div class="cap"><span class="g">logged in</span><span style="color:var(--bad)">silently logged out</span></div>
+<div class="verdict"><div class="t">REGRESSION_DETECTED</div><div class="s">No crash, no error, fresh installs pass.<br/>Every existing user is hit on update.</div></div>
+<div class="flowlbl">HOW IT WORKS</div>
+<div class="flow"><span class="st">Diff APKs</span><span class="ar">→</span><span class="st">Plan</span><span class="ar">→</span><span class="st">Test on emulator</span><span class="ar">→</span><span class="st">Verify</span><span class="ar">→</span><span class="st hg">Human gate</span></div>
+<div class="tools"><span class="lbl">BUILT WITH</span><span class="chip">neatlogs</span><span class="chip">Entire</span><span class="chip">cfo.ai</span><span class="chip">Claude Agent SDK</span></div>
+<div class="qrbox"><div class="q"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h29v29H0z"/><path stroke="#0b0d12" d="M0 0.5h7m1 0h1m3 0h4m2 0h1m1 0h1m1 0h7M0 1.5h1m5 0h1m1 0h1m3 0h2m2 0h1m1 0h1m1 0h1m1 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m3 0h2m4 0h1m2 0h2m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h2m1 0h3m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m2 0h2m1 0h1m1 0h1m1 0h4m2 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m4 0h1m1 0h1m1 0h3m1 0h1m2 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h1m6 0h3m1 0h1M0 8.5h1m1 0h2m1 0h3m2 0h1m1 0h2m1 0h1m1 0h1m4 0h1m2 0h1m1 0h2M1 9.5h3m1 0h1m1 0h4m2 0h3m1 0h4m1 0h3m3 0h1M0 10.5h2m4 0h1m4 0h3m2 0h3m1 0h2m1 0h1m2 0h2M0 11.5h1m1 0h2m1 0h1m2 0h1m3 0h1m3 0h1m1 0h2m1 0h3m4 0h1M1 12.5h4m1 0h3m5 0h2m1 0h1m2 0h2m1 0h1m1 0h2M0 13.5h2m1 0h3m1 0h5m2 0h1m1 0h3m3 0h1m3 0h3M0 14.5h1m1 0h5m2 0h1m2 0h2m1 0h2m1 0h4m1 0h1m2 0h3M0 15.5h2m3 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m3 0h5m2 0h1M1 16.5h1m1 0h4m1 0h2m1 0h2m1 0h3m1 0h1m1 0h2m2 0h2m1 0h1M1 17.5h5m1 0h1m2 0h2m2 0h1m1 0h5m2 0h1m1 0h3M0 18.5h1m1 0h2m2 0h2m4 0h5m1 0h1m1 0h2m1 0h1m2 0h1M4 19.5h2m3 0h1m1 0h4m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1M1 20.5h2m1 0h3m3 0h1m2 0h2m1 0h1m1 0h9M8 21.5h3m4 0h2m3 0h1m3 0h5M0 22.5h7m1 0h2m4 0h2m1 0h1m2 0h1m1 0h1m1 0h2m1 0h1M0 23.5h1m5 0h1m1 0h1m4 0h3m2 0h1m1 0h1m3 0h2m2 0h1M0 24.5h1m1 0h3m1 0h1m2 0h3m4 0h1m1 0h1m1 0h5m1 0h1m1 0h1M0 25.5h1m1 0h3m1 0h1m1 0h6m5 0h1m1 0h1m1 0h3m1 0h1M0 26.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h1m2 0h2m1 0h1m2 0h1m2 0h1m1 0h1M0 27.5h1m5 0h1m4 0h1m2 0h2m1 0h2m1 0h1m2 0h3m1 0h1M0 28.5h7m1 0h1m4 0h1m3 0h2m1 0h2m1 0h3m1 0h1"/></svg>
+</div><div class="tx"><b>▶ 3-min demo</b><br/>youtu.be/AEPnlF2-uyQ<br/>github.com/Shivam-sopho/<br/>release-gate-agent</div></div>
+</body></html>
