@@ -38,7 +38,27 @@ SplashActivity.onCreate, LoginActivity.onCreate and DashboardActivity.onCreate. 
 routing at app start, login and the dashboard."* It then chose the upgrade journey and the
 fresh-install control from that.
 
-## 2. For the coding agent: checkpoints + entire-graph
+## 2. Trails: the release verdict lands where the code is reviewed
+
+`entire runner setup -y` added six trail runners (`.entire/runners/`), tailored by Entire to
+this repo. The risk runner's first priority is *"human release gate integrity: any path that
+lets a release proceed without an explicit human Allow"*.
+
+With `run.mjs --trail <n>`, the release agent posts its result to that Trail as a discussion:
+the verdict, the human gate decision, the agent's evidence summary, turns, wall time, cost and
+the report path. So a release candidate's Trail carries both the runners' review of the *code*
+and the agent's on-device evidence about the *build*, and a human approves on the Trail.
+
+[Trail #1](https://entire.io/gh/Shivam-sopho/release-gate-agent/trails/1) built this feature
+(branch `feat/trail-verdicts`, checkpoint `01M4JV24R4C7SD44XX5173KCD5`). Its first real use was a
+run on the notes scenario that posted:
+
+> **Release gate: REGRESSION_DETECTED (notes-data-loss)**: Verdict REGRESSION_DETECTED, human
+> gate allow. "2.0 silently loses all notes saved by existing users on upgrade. The binary diff
+> shows only NotesStore changed … Fix: add a one-time migration in NotesStore …" Turns 25,
+> wall time 105.2 s, cost $0.2224.
+
+## 3. For the coding agent: checkpoints + entire-graph
 
 - `entire enable --agent claude-code` installs Claude Code hooks (`.claude/settings.json`) and
   repo settings (`.entire/settings.json`). Checkpoints are stored as git refs and pushed to
@@ -50,6 +70,7 @@ fresh-install control from that.
 
 | Checkpoint | Commit | What |
 |---|---|---|
+| `01M4JV24R4C7SD44XX5173KCD5` | `900ae19` (on [Trail #1](https://entire.io/gh/Shivam-sopho/release-gate-agent/trails/1)) | Post release-gate verdicts to an Entire Trail (`--trail`). Implemented by a Claude Code session on the Trail's branch. |
 | `01M4JN7HHKQ28WF2HYV3VGEN0T` | [`d94f4ef`](https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/d94f4ef370004e38a3259b8deb2840d7201a119f) | Control panel: distinct INCONCLUSIVE verdict state. A Claude Code session in this repo found that the approval card showed the new INCONCLUSIVE verdict as a red regression, and fixed it. 122.6k tokens, 1 file. |
 
 Open a link on entire.io, then repository → commit → checkpoint, to see **Sessions** (the request

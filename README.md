@@ -127,6 +127,10 @@ Reproduce: `scripts/bench.sh auth-logout:v1-baseline auth-logout:v2-evidence-fir
   [`01M4JN7HHKQ28WF2HYV3VGEN0T`](https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/d94f4ef370004e38a3259b8deb2840d7201a119f)
   captures the session that fixed the control panel's INCONCLUSIVE verdict display: prompt,
   decisions and diff.
+- **Trails.** Runners tailored to this repo review every Trail. With `--trail <n>` the release
+  agent posts its verdict, evidence summary, cost and gate decision to that Trail, so code review
+  and on-device release evidence sit on one page with a human approval:
+  [Trail #1](https://entire.io/gh/Shivam-sopho/release-gate-agent/trails/1).
 - entire-graph's agent guide is installed in `AGENTS.md`/`CLAUDE.md`.
 
 Details and raw output: [`docs/entire.md`](docs/entire.md).
