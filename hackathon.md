@@ -78,6 +78,29 @@ under "Build log".
 - Known gap: Entire has 0 checkpoints so far. This coding session started outside the repo
   folder, so Entire's hooks did not attach. Next sessions start inside the repo.
 
+- Done: Entire account connected (entire.io GitHub mirror of this repo, India region), CLI
+  logged in as github:Shivam-sopho.
+
+### Next (planned, not done)
+
+1. **Entire checkpoint**: from a Claude Code session started *inside this repo*, make a focused
+   commit; answer yes to linking session context. Verify with `entire checkpoint list` and
+   `entire checkpoint explain HEAD`, push, `entire status`. Record the checkpoint link
+   (`https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/<full sha>`) and checkpoint ID
+   in `docs/entire.md` and the README. A Best Use of Entire submission needs both.
+2. **cfo.ai business plan** (`docs/business-plan.md`, linked from the README but not written yet):
+   unit cost about $0.21 per release check (v2 average, standard API pricing) and about 80 s per check.
+   Builder signs up at cfo.ai/neathacks and cancels the subscription immediately in Settings → Billing.
+3. Demo video script (both scenarios; control panel with human Allow; neatlogs before/after;
+   failure-recovery run; entire-graph `source_impact`).
+4. Building-in-public posts (#neatHack); final submission = quote-tweet of the official neatlogs
+   post on Oct 12, 7:00–11:55 PM IST. Check with Entire whether Best Use of Entire has an earlier
+   deadline: their page says Oct 10–11.
+5. Optional: entire-graph stats after some coding sessions; Entire Brain.
+
+Running services during development: tool server `cd tools && node server.mjs` (:8791),
+emulator `Medium_Phone_API_37.0`, Node at `/opt/homebrew/opt/node@22/bin`.
+
 ## Demo
 
 Pending.
