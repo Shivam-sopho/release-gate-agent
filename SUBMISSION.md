@@ -5,7 +5,7 @@
 old and new APKs, tests the journeys that change puts at risk on a real emulator, writes an
 evidence-backed report with a code-level fix, and stops at a human release gate.
 **Repo:** https://github.com/Shivam-sopho/release-gate-agent
-**Demo video:** DEMO_LINK
+**Demo video:** https://youtu.be/AEPnlF2-uyQ
 
 | Requirement | Evidence |
 |---|---|

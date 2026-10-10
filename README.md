@@ -8,7 +8,7 @@ and then **stops at a human release gate**: the release does not ship until a pe
 Allow.
 
 Built for [neatHack](https://neatlogs.com/hackathon) (Oct 10–12, 2026). #neatHack ·
-**[Submission summary](SUBMISSION.md)** · [Demo script](docs/demo-script.md)
+**[▶ Demo video](https://youtu.be/AEPnlF2-uyQ)** · **[Submission summary](SUBMISSION.md)**
 
 ## Why
 
