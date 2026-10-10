@@ -149,10 +149,21 @@ cd agent && node --env-file-if-exists=../.env run.mjs --scenario auth-logout --p
 Each run writes `runs/<run-id>/`: `summary.json` (turns, tokens, cost, verdict, gate decision,
 git commit), `transcript.jsonl`, screenshots, logcat and `REPORT.md`.
 
-Failure-recovery demo: start the tool server with
-`FAULT_INJECT=adb_install:1,adb_dump_ui:1 node server.mjs`. The first install and the first
-screen dump fail the way a flaky emulator does. This is off by default, logged by the server,
-and recorded in the run summary.
+### Failure recovery
+
+Start the tool server with `FAULT_INJECT=adb_install:1,adb_tap:1 node server.mjs`, and the first
+install and the first tap fail the way a flaky emulator does. This is off by default, logged by
+the server, and recorded in the run summary. In run
+[`2026-10-10T09-54-58-908Z_auth-logout_v2-evidence-first`](evidence/failure-recovery/2026-10-10T09-54-58-908Z_auth-logout_v2-evidence-first/REPORT.md):
+
+1. `adb_install old.apk` → `device offline`. The `adb_launch` the agent had issued in the same
+   turn then also failed for real, because the app wasn't installed.
+2. The agent called `adb_wait_for_device`, retried the install, and continued.
+3. Tapping LOG IN → `error: closed`. The agent waited for the device, re-read the screen,
+   confirmed it was still on LoginActivity, and retried the tap.
+4. It finished with the correct verdict and listed both failures and recoveries in the report.
+
+The server log with the injected faults is in the same folder.
 
 ## Repo layout
 

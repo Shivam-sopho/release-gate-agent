@@ -65,10 +65,16 @@ under "Build log".
   v2 vs v1: turns -38%, time -18%, cost -22%, cached input tokens -35%. Table in README and
   `evidence/benchmark/`.
 - Done: `source_impact` tool (optional, `--source`): entire-graph `impact` maps the changed class
-  to the screens that depend on it (AuthManager -> Splash/Login/Dashboard). Not yet run by the agent.
+  to the screens that depend on it (AuthManager -> Splash/Login/Dashboard).
 - Decision: unattended benchmark runs use `--gate auto-allow` (requested by the builder). The
   default is still the real human gate. The 8 benchmark runs above used auto-deny; the gate is the
   final step, so this does not affect the measured numbers.
+- Tested: failure-recovery run with `FAULT_INJECT=adb_install:1,adb_tap:1` and `--source`
+  (`evidence/failure-recovery/2026-10-10T09-54-58-908Z_auth-logout_v2-evidence-first`): the install failed (device offline), a launch in the same
+  turn cascaded, and a tap failed (closed). The agent waited for the device and retried each one,
+  re-checked the screen, used `source_impact` to pick journeys, reached the correct verdict and
+  documented the recoveries. 31 turns, 114.5 s, $0.27, gate auto-allow.
+- Done: `docs/entire.md` with real entire-graph impact output.
 - Known gap: Entire has 0 checkpoints so far. This coding session started outside the repo
   folder, so Entire's hooks did not attach. Next sessions start inside the repo.
 
