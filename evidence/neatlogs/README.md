@@ -1,5 +1,16 @@
 # neatlogs evidence
 
+## Before → after, on the same scenario (auth-logout), as neatlogs shows it
+
+| | v1 baseline (`13-…`, 3:17 PM) | v2 evidence-first (`10-…`, 3:18 PM) |
+|---|---|---|
+| Steps (LLM + tool spans) | **66** | **45** (−32%) |
+| Duration | 95 s | 77 s (−19%) |
+| Verdict | REGRESSION_DETECTED | REGRESSION_DETECTED |
+| Run folder (in the trace output) | `…09-46-56-227Z_auth-logout_v1-baseline` | `…09-48-33-134Z_auth-logout_v2-evidence-first` |
+
+The averages over all 8 benchmark runs are in the README (turns −38%, cost −22%).
+
 Workflow `apk-release-check`. Every run is one trace. The root is a `claude_agent.query` AGENT
 span, with one LLM span per model turn and one TOOL span per MCP tool call. Traces are tagged
 `prompt:`, `toolset:` and `scenario:`.
@@ -17,6 +28,9 @@ span, with one LLM span per model turn and one TOOL span per MCP tool call. Trac
 | `09-v2-auth-run-steps.png` | Its steps: 46 steps, 94 s. |
 | `10-v2-auth-benchmark-steps.png` | v2 benchmark run on auth (started 3:18 PM, run `2026-10-10T09-48-33-134Z_auth-logout_v2-evidence-first`): **45 steps, 77 s**. |
 | `11-v2-auth-benchmark-gate-denied.png` | The same run's last steps: `request_release_approval` shows ERROR, which is the auto-deny gate. That is the "Execution Failed" explained above. |
+| `13-v1-auth-benchmark-steps.png` | **v1** benchmark run on auth (started 3:17 PM, run `2026-10-10T09-46-56-227Z_auth-logout_v1-baseline`): **66 steps, 95 s**. Note the separate `adb_dump_ui` after every launch, which v2 removed. |
+| `14-v1-auth-benchmark-gate-denied.png` | Its last steps, ending with the auto-deny gate ERROR. |
+| `15-v1-auth-benchmark-output.png` | Its output, with the run folder name confirming v1. |
 | `12-v2-auth-benchmark-output.png` | Its output: "the human reviewer denied it (automatic deny for this benchmark run), so I've stopped", plus the results table and fix. |
 
 **About "Execution Failed" on the 03:15–03:21 PM traces.** These are the unattended benchmark
