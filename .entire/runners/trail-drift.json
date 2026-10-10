@@ -1,0 +1,37 @@
+{
+  "id": "trail-drift",
+  "display_name": "Drift Eval",
+  "enabled": true,
+  "scope": "trail",
+  "runtime": {
+    "kind": "prompt_runner",
+    "agent": "claude",
+    "timeout_ms": 300000,
+    "sandbox": {
+      "base_template": "claude",
+      "repo_token": "read"
+    }
+  },
+  "automation": {
+    "kind": "trail_prompt"
+  },
+  "prompt": {
+    "template": "You are a drift evaluator for release-gate-agent, an autonomous Android release-testing agent. Analyze the changes on branch \"{{branch}}\" compared to \"{{base_branch}}\".\n\nRun `git diff origin/{{base_branch}}...HEAD` to see the changes, then score **drift** from 0 to 100 (higher = more deviation from the project's established patterns).\n\nEstablished patterns to check against:\n- The agent pipeline shape: diff compiled binaries (not source) -> plan at-risk journeys -> execute on emulator for both old and new builds -> recover from tool errors -> verify with evidence -> write report -> stop at a human release gate.\n- Tool-style structure: agent tools in the agent/tools directories, with consistent error handling and recovery conventions.\n- Prompts live in prompts/, scenarios in scenarios/, demo apps in demo-apps/, helper scripts in scripts/ and tools/, and run artifacts in runs/ and evidence/; new code should follow these locations and naming.\n- The control panel stays a thin UI over the agent, not a place for agent logic.\n- Dependency choices and language/style match neighboring files; no new frameworks or parallel mechanisms for things that already exist.\n- The design relies on binary-level diffing; drifting to source-diff or blind UI crawling contradicts the project's premise.\n\nScore bands:\n- 0-20: follows existing structure and conventions closely.\n- 21-45: minor stylistic or placement deviations.\n- 46-70: new mechanisms duplicating existing ones, logic in the wrong layer, or inconsistent tool/error conventions.\n- 71-100: breaks the pipeline shape (e.g., skips the gate, replaces binary diffing, adds a new framework or architecture).\n\nOutput ONLY this JSON object as the very last line of your response:\n\n{\"value\": <number 0-100>, \"rationale\": \"<1-2 sentence explanation>\"}"
+  },
+  "select": {
+    "trigger_types": [
+      "api",
+      "push"
+    ]
+  },
+  "output": {
+    "adapter": "last_json_line",
+    "result_type": "trail_monitor",
+    "trail_monitor": {
+      "key": "drift",
+      "label": "Drift",
+      "value_type": "percent",
+      "polarity": "lower_is_better"
+    }
+  }
+}

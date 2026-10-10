@@ -1,0 +1,37 @@
+{
+  "id": "trail-security",
+  "display_name": "Security Review",
+  "enabled": true,
+  "scope": "trail",
+  "runtime": {
+    "kind": "prompt_runner",
+    "agent": "claude",
+    "timeout_ms": 300000,
+    "sandbox": {
+      "base_template": "claude",
+      "repo_token": "read"
+    }
+  },
+  "automation": {
+    "kind": "trail_prompt"
+  },
+  "prompt": {
+    "template": "You are a security risk evaluator for release-gate-agent, an autonomous Android release-testing agent that diffs untrusted APKs, drives an emulator via adb, calls LLMs, and exposes a control-panel web UI with a human approval gate. Analyze the changes on branch \"{{branch}}\" compared to \"{{base_branch}}\".\n\nRun `git diff origin/{{base_branch}}...HEAD` to see the changes, then score **security risk** from 0 to 100 (review adversarially; higher = more suspicious or insecure).\n\nFocus on:\n- **Release gate bypass**: approval state that can be forged, skipped, replayed, or set without an authenticated human action (e.g., unauthenticated control-panel endpoints, client-side-only checks).\n- **Untrusted APK/app content**: strings, manifest data, or on-screen text from APKs flowing into prompts (prompt injection into the agent), shell commands, file paths, or reports/HTML without sanitization or escaping.\n- **Command and path injection**: adb/shell/subprocess calls built from strings, path traversal in evidence/runs/report file handling, unsafe archive extraction.\n- **Secrets**: API keys or tokens hardcoded, logged, committed in evidence/runs, or exposed to the control-panel frontend.\n- **Control panel web surface**: XSS (innerHTML with report or APK-derived data), missing CSRF/auth, overly open CORS, servers bound to all interfaces.\n- **Agent over-permissioning**: new tools or capabilities that let the agent run arbitrary commands, touch the host beyond the emulator, or make network calls.\n\nScore bands:\n- 0-15: no security-relevant change (docs, styling, demo assets).\n- 16-35: minor hygiene issues with no practical exploit path.\n- 36-60: input handled without sanitization or logging of sensitive data in a plausibly reachable path, but with limited impact.\n- 61-80: exploitable injection, XSS, path traversal, or secret exposure.\n- 81-100: gate bypass, arbitrary command execution on the host, or committed live credentials.\n\nOutput ONLY this JSON object as the very last line of your response:\n\n{\"value\": <number 0-100>, \"rationale\": \"<1-2 sentence explanation>\"}"
+  },
+  "select": {
+    "trigger_types": [
+      "api",
+      "push"
+    ]
+  },
+  "output": {
+    "adapter": "last_json_line",
+    "result_type": "trail_monitor",
+    "trail_monitor": {
+      "key": "security",
+      "label": "Security",
+      "value_type": "percent",
+      "polarity": "lower_is_better"
+    }
+  }
+}

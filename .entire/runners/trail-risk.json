@@ -1,0 +1,37 @@
+{
+  "id": "trail-risk",
+  "display_name": "Risk Eval",
+  "enabled": true,
+  "scope": "trail",
+  "runtime": {
+    "kind": "prompt_runner",
+    "agent": "claude",
+    "timeout_ms": 300000,
+    "sandbox": {
+      "base_template": "claude",
+      "repo_token": "read"
+    }
+  },
+  "automation": {
+    "kind": "trail_prompt"
+  },
+  "prompt": {
+    "template": "You are a risk evaluator for release-gate-agent, an autonomous Android release-testing agent (APK diffing, emulator-driving, evidence-backed reports, and a human release gate), plus a control-panel web UI, demo apps, scenarios, and prompts. Analyze the changes on branch \"{{branch}}\" compared to \"{{base_branch}}\".\n\nRun `git diff origin/{{base_branch}}...HEAD` to see the changes, then score **risk** from 0 to 100 (higher = more potential damage if something is wrong).\n\nWeigh these dimensions, most important first:\n1. **Human release gate integrity**: any path that lets a release proceed without an explicit human Allow, weakens or auto-approves the gate, or reports a verdict not backed by evidence.\n2. **Diff/analysis correctness**: APK diffing (manifest, per-dex string pool, per-class hashes), journey-risk planning, and old-vs-new end-state comparison. False negatives (missing a real regression, especially silent ones like SharedPreferences key renames without migration that cause logout or data loss) are worse than false positives.\n3. **Emulator/tool execution**: install/launch/tap/observe tools, error recovery and retry logic (wait for device, retry once, re-observe), device state leakage between old and new build runs, destructive adb commands, hung or unbounded loops.\n4. **Agent prompts and scenarios**: changes to prompts, scenarios, or demo apps that alter what gets tested or could make the agent hallucinate evidence, skip journeys, or overfit to demo scenarios.\n5. **Reports and evidence**: report fidelity, incorrect or missing code-level fix suggestions, evidence files overwritten or mismatched to the run.\n6. **Control panel and secrets**: control-panel UI/server changes that expose API keys, run artifacts, or trigger runs/approvals unsafely; hardcoded credentials; unsanitized paths or shell commands.\n\nScore bands:\n- 0-20: docs, comments, evidence/demo-video assets, cosmetic control-panel styling, no behavior change.\n- 21-40: small isolated changes to scripts, demo apps, or scenarios with no effect on the agent's verdicts or the gate.\n- 41-60: modified prompts, planning logic, report formatting, or recovery behavior that could change what is tested or reported but still leaves the gate intact.\n- 61-80: changes to APK diffing, observation/comparison logic, emulator tool semantics, or control-panel actions that could cause missed regressions or wrong verdicts.\n- 81-100: bypasses or weakens the human release gate, fabricates or drops evidence, leaks secrets, or runs destructive/unsanitized commands.\n\nOutput ONLY this JSON object as the very last line of your response:\n\n{\"value\": <number 0-100>, \"rationale\": \"<1-2 sentence explanation>\"}"
+  },
+  "select": {
+    "trigger_types": [
+      "api",
+      "push"
+    ]
+  },
+  "output": {
+    "adapter": "last_json_line",
+    "result_type": "trail_monitor",
+    "trail_monitor": {
+      "key": "risk",
+      "label": "Risk",
+      "value_type": "percent",
+      "polarity": "lower_is_better"
+    }
+  }
+}
