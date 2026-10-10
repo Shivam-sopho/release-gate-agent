@@ -3,22 +3,89 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { execFileSync, execSync } from "node:child_process";
+import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const PORT = process.env.PORT || 8791;
-const EVIDENCE_DIR = process.env.EVIDENCE_DIR || path.resolve("./evidence");
-fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+const DEFAULT_EVIDENCE_DIR = process.env.EVIDENCE_DIR || path.resolve("./evidence");
+
+// Each agent run sends its own evidence directory in the x-evidence-dir header,
+// so concurrent or back-to-back runs never overwrite each other's screenshots.
+const requestContext = new AsyncLocalStorage();
+function evidenceDir() {
+  const dir = requestContext.getStore()?.evidenceDir || DEFAULT_EVIDENCE_DIR;
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+// Android Studio on macOS installs the SDK to ~/Library/Android/sdk; Linux uses ~/Android/Sdk.
+function sdkHome() {
+  const candidates = [
+    process.env.ANDROID_HOME,
+    process.env.ANDROID_SDK_ROOT,
+    path.join(os.homedir(), "Library/Android/sdk"),
+    path.join(os.homedir(), "Android/Sdk"),
+  ];
+  return candidates.find((p) => p && fs.existsSync(p)) || null;
+}
+
+function adbPath() {
+  const home = sdkHome();
+  const bundled = home && path.join(home, "platform-tools", "adb");
+  return bundled && fs.existsSync(bundled) ? bundled : "adb";
+}
 
 function adb(args, opts = {}) {
-  return execFileSync("adb", args, { encoding: "utf8", maxBuffer: 1024 * 1024 * 50, ...opts });
+  return execFileSync(adbPath(), args, { encoding: "utf8", maxBuffer: 1024 * 1024 * 50, ...opts });
 }
 
 function text(s) {
   return { content: [{ type: "text", text: s }] };
 }
 
-const server = new McpServer({ name: "android-release-agent-tools", version: "1.0.0" });
+function errorText(s) {
+  return { content: [{ type: "text", text: s }], isError: true };
+}
+
+// Opt-in fault injection for reproducible failure-recovery runs, e.g.
+// FAULT_INJECT="adb_install:1,adb_dump_ui:1" makes the first adb_install call and
+// the first adb_dump_ui call fail the way a flaky emulator does. Off by default;
+// every injected fault is logged on the server so runs can be audited.
+const faultBudget = Object.fromEntries(
+  (process.env.FAULT_INJECT || "")
+    .split(",")
+    .filter(Boolean)
+    .map((s) => s.split(":"))
+    .map(([tool, n]) => [tool, Number(n || 1)])
+);
+const INJECTED_ERRORS = {
+  adb_install: "adb: failed to install: error: device offline",
+  adb_dump_ui: "ERROR: could not get idle state.",
+  adb_tap: "error: closed",
+  adb_launch: "error: device offline",
+};
+
+// Wraps a tool handler so adb/aapt failures come back to the agent as a tool
+// error it can reason about and recover from, instead of an opaque exception.
+function tool(name, handler) {
+  return async (input) => {
+    if (faultBudget[name] > 0) {
+      faultBudget[name]--;
+      console.log(`[fault-inject] ${name} -> ${INJECTED_ERRORS[name] || "error: device offline"}`);
+      return errorText(INJECTED_ERRORS[name] || "error: device offline");
+    }
+    try {
+      return await handler(input);
+    } catch (e) {
+      const detail = [e.stderr, e.stdout, e.message].filter(Boolean).map(String).join("\n").trim();
+      return errorText(`${name} failed: ${detail.slice(0, 2000)}`);
+    }
+  };
+}
+
+const server = new McpServer({ name: "release-gate-tools", version: "1.0.0" });
 
 server.registerTool(
   "diff_apks",
@@ -27,7 +94,7 @@ server.registerTool(
       "Diff two compiled APKs (old vs new) at the binary level: AndroidManifest.xml (permissions, activities, services, receivers), and dex string-pool / size deltas per class file. This is a real diff of the shipped artifact, not the source/git diff. Use this FIRST to understand what actually changed before deciding what to test.",
     inputSchema: { old_apk: z.string().describe("Path to old.apk"), new_apk: z.string().describe("Path to new.apk") },
   },
-  async ({ old_apk, new_apk }) => {
+  tool("diff_apks", async ({ old_apk, new_apk }) => {
     const tmp = fs.mkdtempSync("/tmp/apkdiff-");
     const oldDir = path.join(tmp, "old");
     const newDir = path.join(tmp, "new");
@@ -113,11 +180,12 @@ server.registerTool(
         "```",
       ].join("\n")
     );
-  }
+  })
 );
 
 function findAapt() {
-  const home = process.env.ANDROID_HOME || `${process.env.HOME}/Android/Sdk`;
+  const home = sdkHome();
+  if (!home) return null;
   const buildTools = path.join(home, "build-tools");
   if (!fs.existsSync(buildTools)) return null;
   const versions = fs.readdirSync(buildTools).sort().reverse();
@@ -134,7 +202,7 @@ server.registerTool(
     description: "Install (or upgrade in place with -r, preserving app data) an APK onto the connected emulator/device.",
     inputSchema: { apk_path: z.string() },
   },
-  async ({ apk_path }) => text(adb(["install", "-r", apk_path]))
+  tool("adb_install", async ({ apk_path }) => text(adb(["install", "-r", apk_path])))
 );
 
 server.registerTool(
@@ -143,10 +211,10 @@ server.registerTool(
     description: "Force-stop an app (simulates the app being fully killed / swiped away), so the next launch is a cold start.",
     inputSchema: { package_id: z.string() },
   },
-  async ({ package_id }) => {
+  tool("adb_force_stop", async ({ package_id }) => {
     adb(["shell", "am", "force-stop", package_id]);
     return text(`force-stopped ${package_id}`);
-  }
+  })
 );
 
 server.registerTool(
@@ -155,10 +223,10 @@ server.registerTool(
     description: "Launch an app's default launcher activity (cold start from the home screen).",
     inputSchema: { package_id: z.string() },
   },
-  async ({ package_id }) => {
+  tool("adb_launch", async ({ package_id }) => {
     adb(["shell", "monkey", "-p", package_id, "-c", "android.intent.category.LAUNCHER", "1"]);
     return text(`launched ${package_id}`);
-  }
+  })
 );
 
 server.registerTool(
@@ -167,10 +235,10 @@ server.registerTool(
     description: "Tap the screen at pixel coordinates (x, y). Get coordinates from adb_dump_ui's element bounds first.",
     inputSchema: { x: z.number(), y: z.number() },
   },
-  async ({ x, y }) => {
+  tool("adb_tap", async ({ x, y }) => {
     adb(["shell", "input", "tap", String(Math.round(x)), String(Math.round(y))]);
     return text(`tapped (${x}, ${y})`);
-  }
+  })
 );
 
 server.registerTool(
@@ -180,7 +248,7 @@ server.registerTool(
       "Dump the current screen: which activity is focused (ground truth for 'what screen am I on'), plus visible text elements and their tap bounds [left,top][right,bottom].",
     inputSchema: {},
   },
-  async () => {
+  tool("adb_dump_ui", async () => {
     const focus = adb(["shell", "dumpsys", "window"]).split("\n").find((l) => l.includes("mCurrentFocus")) || "(unknown)";
     adb(["shell", "uiautomator", "dump", "/sdcard/dump.xml"]);
     const xml = adb(["shell", "cat", "/sdcard/dump.xml"]);
@@ -188,7 +256,7 @@ server.registerTool(
       .filter((m) => m[1] || m[2])
       .map((m) => `text="${m[1]}" id="${m[2]}" bounds=${m[3]}`);
     return text([`focused_window: ${focus.trim()}`, "elements:", ...elements].join("\n"));
-  }
+  })
 );
 
 server.registerTool(
@@ -197,21 +265,21 @@ server.registerTool(
     description: "Capture a PNG screenshot of the current screen as evidence. Returns the saved file path.",
     inputSchema: { label: z.string().describe("filename label, e.g. old_after_login") },
   },
-  async ({ label }) => {
-    const file = path.join(EVIDENCE_DIR, `${label}.png`);
-    const buf = execFileSync("adb", ["exec-out", "screencap", "-p"], { maxBuffer: 1024 * 1024 * 50 });
+  tool("adb_screenshot", async ({ label }) => {
+    const file = path.join(evidenceDir(), `${label}.png`);
+    const buf = execFileSync(adbPath(), ["exec-out", "screencap", "-p"], { maxBuffer: 1024 * 1024 * 50 });
     fs.writeFileSync(file, buf);
     return text(`saved ${file}`);
-  }
+  })
 );
 
 server.registerTool(
   "adb_logcat_clear",
   { description: "Clear the device logcat buffer, so a subsequent dump only shows fresh events.", inputSchema: {} },
-  async () => {
+  tool("adb_logcat_clear", async () => {
     adb(["logcat", "-c"]);
     return text("logcat cleared");
-  }
+  })
 );
 
 server.registerTool(
@@ -220,12 +288,51 @@ server.registerTool(
     description: "Dump accumulated logcat since the last clear, filtered to app-relevant priority (warn+), as evidence.",
     inputSchema: { label: z.string() },
   },
-  async ({ label }) => {
+  tool("adb_logcat_dump", async ({ label }) => {
     const out = adb(["logcat", "-d", "-v", "brief", "*:W"]);
-    const file = path.join(EVIDENCE_DIR, `${label}.logcat.txt`);
+    const file = path.join(evidenceDir(), `${label}.logcat.txt`);
     fs.writeFileSync(file, out);
     return text(`saved ${file} (${out.split("\n").length} lines)`);
-  }
+  })
+);
+
+server.registerTool(
+  "adb_uninstall",
+  {
+    description:
+      "Uninstall an app and its data from the emulator. Use before a fresh-install journey: adb_install -r keeps existing app data, so it is not a fresh install.",
+    inputSchema: { package_id: z.string() },
+  },
+  tool("adb_uninstall", async ({ package_id }) => {
+    try {
+      return text(adb(["uninstall", package_id]).trim());
+    } catch (e) {
+      // Not installed is fine: the goal state (app absent) already holds.
+      if (/not installed|DELETE_FAILED_INTERNAL_ERROR|Unknown package/i.test(String(e.stdout) + String(e.stderr))) {
+        return text(`${package_id} was not installed`);
+      }
+      throw e;
+    }
+  })
+);
+
+server.registerTool(
+  "adb_wait_for_device",
+  {
+    description:
+      "Wait until the emulator is connected and fully booted (up to timeout_s seconds). Use when adb reports 'device offline', 'no devices', or 'closed'.",
+    inputSchema: { timeout_s: z.number().default(60) },
+  },
+  tool("adb_wait_for_device", async ({ timeout_s }) => {
+    const deadline = Date.now() + timeout_s * 1000;
+    adb(["wait-for-device"], { timeout: timeout_s * 1000 });
+    while (Date.now() < deadline) {
+      const booted = adb(["shell", "getprop", "sys.boot_completed"]).trim();
+      if (booted === "1") return text("device online and booted");
+      execSync("sleep 1");
+    }
+    return errorText(`device not booted after ${timeout_s}s`);
+  })
 );
 
 server.registerTool(
@@ -234,14 +341,11 @@ server.registerTool(
     description: "Persist the final regression report (markdown) to disk as evidence/REPORT.md. Call this before requesting release approval.",
     inputSchema: { markdown: z.string() },
   },
-  async ({ markdown }) => {
-    const file = path.join(EVIDENCE_DIR, "REPORT.md");
+  tool("write_report", async ({ markdown }) => {
+    const file = path.join(evidenceDir(), "REPORT.md");
     fs.writeFileSync(file, markdown);
-    // Return the full report content (not just a file path) so it's visible
-    // inline wherever this tool call is viewed — including TrueForge's own
-    // UI, which has no other way to see what's on disk.
-    return text(`saved ${file}\n\nRendered copy: http://127.0.0.1:8792/report\n\n---\n\n${markdown}`);
-  }
+    return text(`saved ${file}`);
+  })
 );
 
 server.registerTool(
@@ -255,9 +359,9 @@ server.registerTool(
     },
     annotations: { destructiveHint: true, title: "Approve release" },
   },
-  async ({ verdict, summary }) => {
+  tool("request_release_approval", async ({ verdict, summary }) => {
     return text(`Human approved release. verdict=${verdict} summary=${summary}`);
-  }
+  })
 );
 
 const app = express();
@@ -267,10 +371,13 @@ app.post("/mcp", async (req, res) => {
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => transport.close());
   await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
+  const evidenceDir = req.get("x-evidence-dir") || null;
+  await requestContext.run({ evidenceDir }, () => transport.handleRequest(req, res, req.body));
 });
 
 app.listen(PORT, "127.0.0.1", () => {
-  console.log(`android-release-agent-tools MCP server on http://127.0.0.1:${PORT}/mcp`);
-  console.log(`evidence dir: ${EVIDENCE_DIR}`);
+  console.log(`release-gate-tools MCP server on http://127.0.0.1:${PORT}/mcp`);
+  console.log(`android sdk: ${sdkHome() || "(not found — set ANDROID_HOME)"}`);
+  console.log(`default evidence dir: ${DEFAULT_EVIDENCE_DIR}`);
+  if (Object.keys(faultBudget).length) console.log(`FAULT INJECTION ON: ${JSON.stringify(faultBudget)}`);
 });
