@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>release-gate-agent slides</title>
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #141821; --line: #252b38; --text: #eef1f6; --muted: #8b95a7;
+    --accent: #7c6cff; --good: #3ddc97; --bad: #ff5d6c; --warn: #ffb454; --mono: "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; overflow: hidden; }
+  .slide { display: none; width: 1920px; height: 1080px; padding: 110px 140px; position: relative; }
+  .slide.on { display: flex; flex-direction: column; }
+  .kicker { font: 600 26px var(--mono); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 28px; }
+  h1 { font-size: 104px; line-height: 1.02; letter-spacing: -.035em; font-weight: 800; }
+  h2 { font-size: 72px; line-height: 1.08; letter-spacing: -.03em; font-weight: 750; margin-bottom: 48px; }
+  p.lead { font-size: 40px; line-height: 1.35; color: var(--muted); max-width: 1450px; margin-top: 36px; }
+  .em { color: var(--text); }
+  .foot { position: absolute; left: 140px; right: 140px; bottom: 70px; display: flex; justify-content: space-between;
+    font: 500 24px var(--mono); color: var(--muted); }
+  .tag { display: inline-block; font: 500 26px var(--mono); padding: 10px 22px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+  .row { display: flex; gap: 36px; }
+  .card { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 40px 44px; }
+  .card h3 { font-size: 36px; margin-bottom: 14px; letter-spacing: -.01em; }
+  .card p { font-size: 30px; line-height: 1.4; color: var(--muted); }
+  .big { font-size: 96px; font-weight: 800; letter-spacing: -.04em; }
+  .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); } .acc { color: var(--accent); }
+  /* flow */
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 30px; }
+  .step { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 30px 28px; }
+  .step .n { font: 600 22px var(--mono); color: var(--accent); }
+  .step h3 { font-size: 36px; margin: 10px 0 10px; }
+  .step p { font-size: 26px; line-height: 1.4; color: var(--muted); }
+  .arrow { width: 56px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: var(--muted); }
+  .step.gate { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  /* phones */
+  .phones { display: flex; gap: 70px; align-items: center; margin-top: 10px; }
+  .phone { width: 300px; height: 560px; border-radius: 44px; border: 3px solid var(--line); background: var(--panel);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px; text-align: center; }
+  .phone .scr { font-size: 30px; font-weight: 700; }
+  .phone small { font-size: 22px; color: var(--muted); }
+  /* table */
+  table { border-collapse: collapse; width: 100%; font-size: 34px; }
+  th, td { text-align: left; padding: 22px 26px; border-bottom: 1px solid var(--line); }
+  th { font: 600 22px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  td.num { font-variant-numeric: tabular-nums; }
+  td.delta { font-weight: 800; color: var(--good); }
+  /* code */
+  pre { font: 500 25px/1.55 var(--mono); background: #07090d; border: 1px solid var(--line); border-radius: 22px; padding: 34px 40px; color: #c9d1e0; white-space: pre-wrap; }
+  pre b { color: var(--good); font-weight: 600; } pre i { color: var(--bad); font-style: normal; } pre u { color: var(--warn); text-decoration: none; }
+  .timeline { display: flex; flex-direction: column; gap: 22px; margin-top: 10px; }
+  .ev { display: flex; gap: 28px; align-items: baseline; font-size: 34px; }
+  .ev .t { font: 600 24px var(--mono); width: 230px; flex: none; }
+</style>
+</head>
+<body>
+
+<!-- 1. title -->
+<section class="slide" id="s1">
+  <div class="kicker">#neatHack · autonomous agent</div>
+  <h1>release-gate-agent</h1>
+  <p class="lead">An AI agent that tests what <span class="em">actually ships</span>: it diffs two compiled Android builds, tests the risky journeys on a real emulator, and <span class="em">never ships without a human</span>.</p>
+  <div style="margin-top:auto" class="row">
+    <span class="tag">Claude Agent SDK</span><span class="tag">neatlogs</span><span class="tag">Entire</span><span class="tag">cfo.ai</span>
+  </div>
+</section>
+
+<!-- 2. problem -->
+<section class="slide" id="s2">
+  <div class="kicker">The problem</div>
+  <h2>The worst release bugs don't crash.</h2>
+  <div class="phones">
+    <div class="phone"><small>v1.0 · before update</small><div class="scr good">Welcome, demo</div><small>logged in</small></div>
+    <div class="arrow" style="font-size:60px">→</div>
+    <div class="phone" style="border-color:var(--bad)"><small>v2.0 · after update</small><div class="scr bad">Sign in</div><small>silently logged out</small></div>
+    <div style="flex:1; padding-left:30px">
+      <p style="font-size:38px; line-height:1.4; color:var(--muted)">A renamed settings file, no migration.<br/><span class="em">No crash. No error.</span><br/><br/>Fresh installs work, so a normal smoke test passes, and <span class="em">every existing user</span> is hit on update.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3. how it works -->
+<section class="slide" id="s3">
+  <div class="kicker">How the agent works</div>
+  <h2>From a binary diff to a human decision.</h2>
+  <div class="flow">
+    <div class="step"><div class="n">01</div><h3>Diff</h3><p>Compiled APKs: manifest, dex string pool, per-class hashes. Not the source.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">02</div><h3>Plan</h3><p>Which journeys does this change put at risk? Upgrade + fresh-install control.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">03</div><h3>Test</h3><p>Drives a real emulator on both builds. Recovers when the device fails.</p></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">04</div><h3>Verify</h3><p>Verdict needs device evidence: screenshots, screen state, logcat.</p></div>
+    <div class="arrow">→</div>
+    <div class="step gate"><div class="n">05</div><h3>Human gate</h3><p>Report + fix in code. The release waits for Allow / Deny.</p></div>
+  </div>
+  <p class="lead" style="font-size:32px">13 MCP tools · runs on the Claude Agent SDK · the gate is enforced by the harness, not by the agent's promise.</p>
+</section>
+
+<!-- 4. neatlogs before/after -->
+<section class="slide" id="s4">
+  <div class="kicker">neatlogs · trace → improve</div>
+  <h2>We read the traces, fixed 3 problems.</h2>
+  <div class="row" style="margin-bottom:44px">
+    <div class="card"><h3>Looked too early</h3><p>Launch returned before the app was up → screen read <code>null</code> → read again.</p></div>
+    <div class="card"><h3>Extra step per action</h3><p>Every tap needed a separate "look" call. Turns, not tokens, drove the cost.</p></div>
+    <div class="card"><h3>No "can't test"</h3><p>With zero device evidence it still said <span class="bad">REGRESSION</span>. Added <span class="warn">INCONCLUSIVE</span>.</p></div>
+  </div>
+  <table>
+    <tr><th>8 real emulator runs</th><th>v1 baseline</th><th>v2</th><th>change</th></tr>
+    <tr><td>Correct verdict</td><td class="num">4 / 4</td><td class="num">4 / 4</td><td class="delta" style="color:var(--text)">same</td></tr>
+    <tr><td>Turns per run</td><td class="num">39.0</td><td class="num">24.2</td><td class="delta">−38%</td></tr>
+    <tr><td>Cost per run</td><td class="num">$0.264</td><td class="num">$0.205</td><td class="delta">−22%</td></tr>
+    <tr><td>Wall time per run</td><td class="num">99 s</td><td class="num">82 s</td><td class="delta">−18%</td></tr>
+  </table>
+</section>
+
+<!-- 5. failure recovery -->
+<section class="slide" id="s5">
+  <div class="kicker">Failure recovery</div>
+  <h2>The emulator failed twice. The agent didn't.</h2>
+  <div class="timeline">
+    <div class="ev"><span class="t bad">adb_install</span><span><span class="bad">device offline</span> · the launch it had already queued fails too</span></div>
+    <div class="ev"><span class="t acc">recover</span><span>adb_wait_for_device → retry install → <span class="good">ok</span></span></div>
+    <div class="ev"><span class="t bad">adb_tap</span><span><span class="bad">error: closed</span> while tapping LOG IN</span></div>
+    <div class="ev"><span class="t acc">recover</span><span>wait → re-read screen (still on Login) → retry tap → <span class="good">ok</span></span></div>
+    <div class="ev"><span class="t good">verdict</span><span><span class="bad">REGRESSION_DETECTED</span>, correct, with both recoveries written into the report</span></div>
+  </div>
+  <p class="lead" style="font-size:30px; margin-top:auto">Reproducible: <code>FAULT_INJECT=adb_install:1,adb_tap:1</code> · logged by the tool server · recorded in the run summary</p>
+</section>
+
+<!-- 6. entire -->
+<section class="slide" id="s6">
+  <div class="kicker">Entire · inside the agent</div>
+  <h2>The diff says <span class="acc">what</span> changed. entire-graph says <span class="acc">what it touches</span>.</h2>
+<pre>$ entire graph impact --symbol <u>AuthManager</u>
+Blast radius: 3 callers
+- <b>SplashActivity.onCreate</b>     [CONSTRUCTS]
+- <b>LoginActivity.onCreate</b>      [CONSTRUCTS]
+- <b>DashboardActivity.onCreate</b>  [CONSTRUCTS]</pre>
+  <p class="lead" style="font-size:32px">The agent's <span class="em">source_impact</span> tool turns that into journeys to test. And every coding session on this repo is an Entire checkpoint: <span class="em" style="font-family:var(--mono)">01M4JN7HHKQ28WF2HYV3VGEN0T</span></p>
+</section>
+
+<!-- 7. cfo.ai -->
+<section class="slide" id="s7">
+  <div class="kicker">cfo.ai · the business</div>
+  <h2>Measured cost → a real business.</h2>
+  <div class="row">
+    <div class="card"><p>Measured cost per check</p><div class="big">$0.21</div><p>demo apps, traced in neatlogs</p></div>
+    <div class="card"><p>Budgeted for real apps</p><div class="big">$1.10</div><p>model + cloud emulator</p></div>
+    <div class="card"><p>Team plan</p><div class="big acc">$199</div><p>per app / month · 69% margin</p></div>
+    <div class="card"><p>Break-even</p><div class="big good">M6</div><p>18 Team + 1 Enterprise</p></div>
+  </div>
+  <p class="lead" style="font-size:32px">Every efficiency we find in the traces goes straight to gross margin.</p>
+</section>
+
+<!-- 8. close -->
+<section class="slide" id="s8">
+  <div class="kicker">release-gate-agent</div>
+  <h1>Test what ships.<br/><span class="acc">Never ship without a human.</span></h1>
+  <p class="lead" style="font-family:var(--mono); font-size:36px; color:var(--text)">github.com/Shivam-sopho/release-gate-agent</p>
+  <div class="foot"><span>#neatHack</span><span>neatlogs · Entire · cfo.ai</span></div>
+</section>
+
+<script>
+  const n = new URLSearchParams(location.search).get("s") || "1";
+  document.getElementById("s" + n).classList.add("on");
+</script>
+</body>
+</html>
