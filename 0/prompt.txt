@@ -1,0 +1,8 @@
+You are on branch feat/trail-verdicts, which backs Entire Trail #1 ('Post release-gate verdicts to Entire Trails'). Implement it in agent/run.mjs, matching the file's existing style (plain ESM, parseArgs options, short comments):
+
+1. Add an optional --trail <number> CLI option (string).
+2. Add a function postToTrail(summary) that, only when --trail is set, runs the Entire CLI via execFileSync (already imported) — 'entire', ['trail','comment','add','--trail', args.trail, '--title', <title>, '--body', <body>] with cwd ROOT. Title: 'Release gate: <VERDICT or NO VERDICT>' (scenario in parentheses). Body (markdown): verdict, human gate decision (allow/deny/none), the agent's summary text from the request_release_approval call input (capture it alongside summary.verdict when that tool_use is seen — add a field summary.verdict_summary), turns, wall time in seconds, cost in USD (from summary.result), toolset/prompt version, run id, and the relative path to runs/<run-id>/REPORT.md.
+3. Call it in the existing finally block after summary.json is written and before neatlogs flush. A failure to post must never fail the run: catch, console.warn a one-line message, continue.
+4. Mention --trail in the usage comment at the top of the file.
+
+Verify with: node --check agent/run.mjs (use /opt/homebrew/opt/node@22/bin/node). Do NOT run the agent. Then git add only agent/run.mjs, commit with message 'Post release-gate verdicts to an Entire Trail (--trail)' followed by a blank line and 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>', and git push. Report the commit sha and a 3-line summary.
