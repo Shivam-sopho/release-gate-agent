@@ -81,13 +81,13 @@ under "Build log".
 - Done: Entire account connected (entire.io GitHub mirror of this repo, India region), CLI
   logged in as github:Shivam-sopho.
 
+- Done: first Entire checkpoint `01M4JN7HHKQ28WF2HYV3VGEN0T` on commit `d94f4ef`, from a
+  Claude Code session run inside the repo (`claude -p`): the control panel now shows INCONCLUSIVE
+  as its own amber state instead of a red regression. Link in `docs/entire.md`.
+
 ### Next (planned, not done)
 
-1. **Entire checkpoint**: from a Claude Code session started *inside this repo*, make a focused
-   commit; answer yes to linking session context. Verify with `entire checkpoint list` and
-   `entire checkpoint explain HEAD`, push, `entire status`. Record the checkpoint link
-   (`https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/<full sha>`) and checkpoint ID
-   in `docs/entire.md` and the README. A Best Use of Entire submission needs both.
+1. Keep coding from sessions inside the repo so further work is checkpointed.
 2. **cfo.ai business plan** (`docs/business-plan.md`, linked from the README but not written yet):
    unit cost about $0.21 per release check (v2 average, standard API pricing) and about 80 s per check.
    Builder signs up at cfo.ai/neathacks and cancels the subscription immediately in Settings → Billing.

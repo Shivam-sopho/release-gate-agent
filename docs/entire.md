@@ -46,6 +46,16 @@ fresh-install control from that.
 - `entire graph init-agents` adds the entire-graph workflow to `AGENTS.md`/`CLAUDE.md`, so
   coding sessions search the graph before grepping.
 
-Checkpoint and `entire graph stats` output: pending. The first coding session was started
-outside the repo folder, so Entire's hooks did not attach to it. Later sessions run inside the
-repo, and their checkpoints will be listed here.
+### Checkpoints
+
+| Checkpoint | Commit | What |
+|---|---|---|
+| `01M4JN7HHKQ28WF2HYV3VGEN0T` | [`d94f4ef`](https://entire.io/gh/Shivam-sopho/release-gate-agent/commit/d94f4ef370004e38a3259b8deb2840d7201a119f) | Control panel: distinct INCONCLUSIVE verdict state. A Claude Code session in this repo found that the approval card showed the new INCONCLUSIVE verdict as a red regression, and fixed it. 122.6k tokens, 1 file. |
+
+Open a link on entire.io, then repository → commit → checkpoint, to see **Sessions** (the request
+and the agent's decisions) and **Changes** (the diff). Locally:
+`entire checkpoint explain 01M4JN7HHKQ28WF2HYV3VGEN0T`.
+
+Note: the first coding session (agent loop, tools, benchmark) was started outside the repo
+folder, so Entire's hooks did not attach to it, and that work has no checkpoints. Work done from
+sessions inside the repo is captured.
