@@ -42,6 +42,19 @@ under "Build log".
   autonomous Claude Agent SDK loop; neatlogs tracing; failure recovery; before/after improvement
   measured in neatlogs; Entire checkpoints; cfo.ai plan.
 - Done: repo created, base ported (see disclosure above).
+- Done: `agent/run.mjs`, an autonomous loop on the Claude Agent SDK (local Claude Code login),
+  wrapped with neatlogs `wrapClaudeAgentSDK`; human release gate via `canUseTool`; per-run
+  `runs/<id>/summary.json`.
+- Done: tool server hardening (Android Studio SDK auto-detect, per-run evidence dir, adb
+  failures returned as recoverable tool errors, `adb_uninstall`, `adb_wait_for_device`,
+  opt-in `FAULT_INJECT`).
+- Done: Entire enabled for Claude Code, entire-graph installed.
+- Tested: smoke run with no emulator (`auth-logout`, v1 prompt, max 6 turns, gate auto-deny):
+  11 turns, 52.9 s, $0.16 (Claude's estimated cost at standard API prices), 7 adb errors. The
+  agent diagnosed the missing `adb`, retried once, did not invent results, and reached the gate.
+- Observed v1 problem: with zero device evidence it still returned `REGRESSION_DETECTED`. It
+  needs an explicit "inconclusive" outcome. This is a candidate for the v2 prompt.
+- Not yet run: neatlogs tracing (key not configured), any emulator journey.
 
 ## Demo
 
