@@ -16,7 +16,7 @@ FPS = 30
 # The panel is recorded at 1920x1080 and fills the frame. While the agent works, the
 # emulator is shown picture-in-picture over the panel's left sidebar (idle during a run).
 PIP_X, PIP_Y, PIP_H = 40, 132, 930
-CFO_SPEED = float(__import__("os").environ.get("CFO_SPEED", "3.0"))  # speed-up for the cfo.ai recording
+CFO_SPEED = float(__import__("os").environ.get("CFO_SPEED", "4.3"))  # speed-up for the cfo.ai recording
 
 
 def run(args):
@@ -31,14 +31,14 @@ def duration(path):
     return float(out.stdout.strip())
 
 
-def audio_filter(seg_len, lead=0.4):
+def audio_filter(seg_len, lead=0.25):
     # Narration starts after a short lead-in and is padded with silence to the segment length.
     ms = int(lead * 1000)
     return f"[1:a]adelay={ms}|{ms},apad,atrim=0:{seg_len:.3f},afade=t=out:st={seg_len - 0.3:.3f}:d=0.3[a]"
 
 
-def slide_segment(name, slide, narration, tail=1.0):
-    seg_len = duration(narration) + 0.4 + tail
+def slide_segment(name, slide, narration, tail=0.35):
+    seg_len = duration(narration) + 0.25 + tail
     out = SEG / f"{name}.mp4"
     run([
         "-loop", "1", "-framerate", str(FPS), "-t", f"{seg_len:.3f}", "-i", str(slide),
@@ -55,7 +55,7 @@ def live_segment(name, start, end, speed, label, narration, emu_offset, show_emu
     """Panel (left) and emulator (right) for panel-time [start, end], sped up by `speed`."""
     src_len = end - start
     vid_len = src_len / speed
-    nar_len = duration(narration) + 0.6 if narration else 0
+    nar_len = duration(narration) + 0.45 if narration else 0
     seg_len = max(vid_len, nar_len)
     hold = seg_len - vid_len  # freeze the last frame if the narration runs longer
     out = SEG / f"{name}.mp4"
@@ -130,7 +130,7 @@ def image_segment(name, image, narration, label, tail=1.2):
         f"[bg][img]overlay=40:125:shortest=1[v1]",
         f"[v1][2:v]overlay=0:0[v2]",
         f"[v2]format=yuv420p,fade=t=in:st=0:d=0.35,fade=t=out:st={seg_len - 0.35:.3f}:d=0.35[v]",
-        f"[1:a]adelay=400|400,apad,atrim=0:{seg_len:.3f},afade=t=out:st={seg_len - 0.3:.3f}:d=0.3[a]",
+        f"[1:a]adelay=250|250,apad,atrim=0:{seg_len:.3f},afade=t=out:st={seg_len - 0.3:.3f}:d=0.3[a]",
     ]
     run(["-i", str(image),
          "-i", str(narration), "-i", str(HERE / "labels" / f"{label}.png"),
@@ -144,7 +144,7 @@ def clip_segment(name, clip, narration, label, speed=1.0):
     """A screen recording fitted under a label bar; the last frame holds if narration runs longer."""
     src = duration(clip)
     vid_len = src / speed
-    seg_len = max(vid_len, duration(narration) + 0.8)
+    seg_len = max(vid_len, duration(narration) + 0.5)
     hold = seg_len - vid_len
     out = SEG / f"{name}.mp4"
     f = [
@@ -174,18 +174,18 @@ def main():
         slide_segment("02_problem", s / "s2.png", n / "s2.wav"),
         slide_segment("03_how", s / "s3.png", n / "s3.wav"),
         live_segment("04_liveA", tl["panel_loaded"], tl["first_tool_call"], 1.0, "liveA", n / "live1.wav", emu_offset, show_emulator=False),
-        live_segment("05_liveB", tl["first_tool_call"], tl["approval_shown"] - 1.5, 4.0, "liveB", n / "live2.wav", emu_offset),
-        live_segment("06_liveC", tl["approval_shown"] - 1.5, tl["run_done"] + 1.5, 1.0, "liveC", n / "live3.wav", emu_offset),
-        live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.0, "liveD", n / "live4.wav", emu_offset, show_emulator=False),
+        live_segment("05_liveB", tl["first_tool_call"], tl["approval_shown"] - 1.5, 6.0, "liveB", n / "live2.wav", emu_offset),
+        live_segment("06_liveC", tl["approval_shown"] - 1.5, tl["run_done"] + 1.5, 1.4, "liveC", n / "live3.wav", emu_offset),
+        live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.6, "liveD", n / "live4.wav", emu_offset, show_emulator=False),
         slide_segment("08_neatlogs", s / "s4.png", n / "s4.wav"),
         slide_segment("09_recovery", s / "s5.png", n / "s5.wav"),
-        clip_segment("09b_neatlogs_live", HERE / "clips" / "neatlogs-live.mp4", n / "shotLive.wav", "shotLive"),
+        clip_segment("09b_neatlogs_live", HERE / "clips" / "neatlogs-live.mp4", n / "shotLive.wav", "shotLive", speed=1.3),
         slide_segment("10_entire", s / "s6.png", n / "s6.wav"),
         image_segment("10b_trail_real", SHOTS / "entire_trail.png", n / "shot3.wav", "shotTrail"),
         slide_segment("11_cfo", s / "s7.png", n / "s7.wav"),
         *([clip_segment("11b_cfo_live", HERE / "clips" / "cfo-live.mp4", n / "cfoLive.wav", "shotCfo",
                         speed=CFO_SPEED)] if (HERE / "clips" / "cfo-live.mp4").exists() else []),
-        slide_segment("12_close", s / "s8.png", n / "s8.wav", tail=2.5),
+        slide_segment("12_close", s / "s8.png", n / "s8.wav", tail=1.8),
     ]
     listing = SEG / "list.txt"
     listing.write_text("".join(f"file '{p.name}'\n" for p in parts))

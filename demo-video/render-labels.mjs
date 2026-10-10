@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 const labels = {
   liveA: ["LIVE RUN", "Upload the shipped build and the release candidate"],
-  liveB: ["LIVE RUN · 4× SPEED", "Real emulator: log in → upgrade → relaunch → fresh-install control"],
+  liveB: ["LIVE RUN · 6× SPEED", "Real emulator: log in → upgrade → relaunch → fresh-install control"],
   liveC: ["HUMAN GATE", "Verdict with evidence. Nothing ships until a person clicks Allow"],
   liveD: ["REPORT", "Results table, screenshots, root cause, suggested fix in code"],
   shotNeatlogs: ["NEATLOGS · REAL TRACES", "Same app, same verdict. v1: 66 steps · 95 s  →  v2: 45 steps · 77 s"],
