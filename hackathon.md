@@ -85,6 +85,21 @@ under "Build log".
   Claude Code session run inside the repo (`claude -p`): the control panel now shows INCONCLUSIVE
   as its own amber state instead of a red regression. Link in `docs/entire.md`.
 
+- Done: control panel verified end to end (upload → live run → Allow → report).
+- Done: `docs/business-plan.md` (unit costs from measured runs; break-even month 6 in the base
+  case, see `docs/cfo-ai/projection.csv`) and `docs/cfo-ai/ari-prompt.md` for cfo.ai.
+- Done: automated demo video (`demo-video/`): a headless browser records a real control-panel
+  run, adb screenrecord captures the emulator, slides are rendered from HTML, narration uses
+  Kokoro (local neural TTS), and ffmpeg composes it. Fixed: the emulator clip was corrupted by
+  interrupting screenrecord; audio dropped after a 24 kHz mono / 48 kHz stereo concat mismatch.
+- Done: Entire Trails. `entire runner setup -y` (6 repo-tailored runners); Trail #1 built
+  `--trail` (the agent posts its verdict to a Trail) on `feat/trail-verdicts` (checkpoint
+  `01M4JV24R4C7SD44XX5173KCD5`); a real notes-scenario run posted its verdict to the Trail.
+  Entire blocks self-approval, so the branch was fast-forwarded into main and the Trail/PR show
+  merged.
+- Done: neatlogs screenshots (`evidence/neatlogs/`, 15 files), including the same-scenario pair
+  v1 66 steps / 95 s vs v2 45 steps / 77 s, and the failure-recovery trace.
+
 ### Next (planned, not done)
 
 1. Keep coding from sessions inside the repo so further work is checkpointed.
