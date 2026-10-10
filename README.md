@@ -191,15 +191,6 @@ The server log with the injected faults is in the same folder.
 | `scripts/` | `bench.sh` (repeatable runs), `compare-runs.mjs` (before/after table) |
 | `hackathon.md` | Dated build log |
 
-## Prior work
-
-The core idea, the APK diff and adb tool implementations, the two demo apps and the first
-control panel come from the author's earlier hackathon project
-([android-release-agent](https://github.com/Shivam-sopho/android-release-agent), Sep 2026),
-ported in this repo's first commit. In that project the agent was never run unattended by a
-model. A human stood in for the model, behind a third-party harness. Everything after the first
-commit was built during neatHack; see [`hackathon.md`](hackathon.md).
-
 ## Limitations
 
 - `diff_apks` is a string-pool and class-hash diff, not a decompiler. It shows *which* class
