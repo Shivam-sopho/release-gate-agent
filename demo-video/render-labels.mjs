@@ -7,6 +7,9 @@ const labels = {
   liveB: ["LIVE RUN · 4× SPEED", "Real emulator: log in → upgrade → relaunch → fresh-install control"],
   liveC: ["HUMAN GATE", "Verdict with evidence. Nothing ships until a person clicks Allow"],
   liveD: ["REPORT", "Results table, screenshots, root cause, suggested fix in code"],
+  shotNeatlogs: ["NEATLOGS · REAL TRACES", "Same app, same verdict. v1: 66 steps · 95 s  →  v2: 45 steps · 77 s"],
+  shotRecovery: ["NEATLOGS · FAILURE RECOVERY", "Failed install, launch and tap in red. Then wait for device, retry, ok"],
+  shotTrail: ["ENTIRE · TRAIL #1", "The agent's verdict posted on the Trail, next to the runner review"],
 };
 const dir = path.join(import.meta.dirname, "labels");
 fs.mkdirSync(dir, { recursive: true });

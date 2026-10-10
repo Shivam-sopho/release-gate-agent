@@ -96,7 +96,51 @@ def live_segment(name, start, end, speed, label, narration, emu_offset, show_emu
     return out
 
 
+EVID = HERE.parent / "evidence"
+SHOTS = OUT / "shots"
+
+
+def make_shots():
+    """Crops the real neatlogs / Entire screenshots (2000x1110) to their readable parts."""
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    nl = EVID / "neatlogs"
+    # v1 | v2 trace, same scenario: the input box, step count and first steps of each.
+    run(["-i", str(nl / "13-v1-auth-benchmark-steps.png"), "-i", str(nl / "10-v2-auth-benchmark-steps.png"),
+         "-filter_complex", "[0]crop=950:950:220:150[a];[1]crop=950:950:220:150[b];[a][b]hstack=2",
+         str(SHOTS / "neatlogs_v1_v2.png")])
+    # failure recovery: install/launch errors + retry, then tap error + recovery.
+    run(["-i", str(nl / "02-failure-recovery-trace-top.png"), "-i", str(nl / "03-failure-recovery-tap-error-and-retry.png"),
+         "-filter_complex", "[0]crop=1160:560:370:540[a];[1]crop=1160:420:370:150[b];[a][b]vstack=2",
+         str(SHOTS / "neatlogs_recovery.png")])
+    run(["-i", str(EVID / "entire" / "trail-1-reviewing.png"), "-vf", "crop=1640:1040:360:65", str(SHOTS / "entire_trail.png")])
+
+
+def image_segment(name, image, narration, label, tail=1.2):
+    """A real screenshot, fitted under a label bar, with a slow push-in."""
+    seg_len = duration(narration) + 0.4 + tail
+    out = SEG / f"{name}.mp4"
+    frames = int(seg_len * FPS)
+    f = [
+        f"color=c={BG}:s=1920x1080:r={FPS}:d={seg_len:.3f}[bg]",
+        # fit + pad to the stage first so zoompan keeps the aspect ratio; a single input
+        # frame becomes `frames` output frames.
+        f"[0:v]scale=1840:930:force_original_aspect_ratio=decrease,pad=1840:930:(ow-iw)/2:(oh-ih)/2:color={BG},"
+        f"zoompan=z='1+0.035*on/{frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1840x930:fps={FPS}[img]",
+        f"[bg][img]overlay=40:125:shortest=1[v1]",
+        f"[v1][2:v]overlay=0:0[v2]",
+        f"[v2]format=yuv420p,fade=t=in:st=0:d=0.35,fade=t=out:st={seg_len - 0.35:.3f}:d=0.35[v]",
+        f"[1:a]adelay=400|400,apad,atrim=0:{seg_len:.3f},afade=t=out:st={seg_len - 0.3:.3f}:d=0.3[a]",
+    ]
+    run(["-i", str(image),
+         "-i", str(narration), "-i", str(HERE / "labels" / f"{label}.png"),
+         "-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]", "-t", f"{seg_len:.3f}",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+         "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-r", str(FPS), str(out)])
+    return out
+
+
 def main():
+    make_shots()
     tl = json.loads((OUT / "timeline.json").read_text())
     emu_offset = tl["emulator_segments"][0]["start"]
     n = HERE / "narration"
@@ -110,8 +154,11 @@ def main():
         live_segment("06_liveC", tl["approval_shown"] - 1.5, tl["run_done"] + 1.5, 1.0, "liveC", n / "live3.wav", emu_offset),
         live_segment("07_liveD", tl["report_opened"], tl["report_end"], 1.0, "liveD", n / "live4.wav", emu_offset, show_emulator=False),
         slide_segment("08_neatlogs", s / "s4.png", n / "s4.wav"),
+        image_segment("08b_neatlogs_real", SHOTS / "neatlogs_v1_v2.png", n / "shot1.wav", "shotNeatlogs"),
         slide_segment("09_recovery", s / "s5.png", n / "s5.wav"),
+        image_segment("09b_recovery_real", SHOTS / "neatlogs_recovery.png", n / "shot2.wav", "shotRecovery"),
         slide_segment("10_entire", s / "s6.png", n / "s6.wav"),
+        image_segment("10b_trail_real", SHOTS / "entire_trail.png", n / "shot3.wav", "shotTrail"),
         slide_segment("11_cfo", s / "s7.png", n / "s7.wav"),
         slide_segment("12_close", s / "s8.png", n / "s8.wav", tail=2.5),
     ]
